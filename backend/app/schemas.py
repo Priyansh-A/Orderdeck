@@ -3,7 +3,44 @@ from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional, Annotated, List
 from sqlmodel import SQLModel
-            
+from .permissions import UserRole
+
+# User Schemas
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
+    role: UserRole = UserRole.STAFF
+    disabled: bool = False
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    role: Optional[UserRole] = None
+    disabled: Optional[bool] = None
+
+class UserOut(UserBase):
+    id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class UserInDb(UserOut):
+    password: str
+
+class TokenData(BaseModel):
+    id: int
+    role: Optional[str] = None
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# Category Schemas
 class CategoryBase(BaseModel):
     name: str
     
@@ -18,17 +55,18 @@ class CategoryOut(CategoryBase):
 class CategoryUpdate(CategoryBase):
     pass
 
+# Product Schemas
 class ProductBase(BaseModel):
     name: str
     price: int
     category_id: int
-    image_url: Optional[str] | None
+    image_url: Optional[str] = None
     
 class ProductUpdate(ProductBase):
     pass
 
 class ProductOut(ProductBase):
-    id:int
+    id: int
     created_at: datetime
     updated_at: Optional[datetime] 
     image_full_url: Optional[str] = None
@@ -52,4 +90,3 @@ class ProductOut(ProductBase):
             "owner": product.owner
         }
         return cls(**product_dict)
-        

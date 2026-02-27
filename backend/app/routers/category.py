@@ -1,4 +1,5 @@
-from .. import schemas
+from .. import schemas, auth
+from ..permissions import *
 from ..models import Category, Product
 from fastapi import Response, status, HTTPException, APIRouter, Depends
 from sqlalchemy.orm import selectinload
@@ -13,27 +14,27 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[schemas.CategoryOut], status_code=status.HTTP_200_OK)
-def get_categories(
+async def get_categories(
     session: SessionDep,
+    current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
+    
 ):
     query = select(Category)
-    result = session.exec(query)
+    result = await session.exec(query)
     posts = result.all()
 
     if not posts:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Couldn't find any categories"
-        )
+        return []
 
     return posts
 
 @router.get("/{id}", response_model=schemas.CategoryOut, status_code=status.HTTP_200_OK)
-def get_category(
+async def get_category(
     session: SessionDep,
-    id: int
+    id: int,
+    current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))    
 ):
-    post = session.get(Category, id)
+    post = await session.get(Category, id)
     
     if not post:
         raise HTTPException(
@@ -43,12 +44,14 @@ def get_category(
     return post
         
 @router.post("/", response_model=schemas.CategoryOut, status_code=status.HTTP_201_CREATED)
-def post_category(
-    session: SessionDep, category: schemas.CategoryBase
+async def post_category(
+    session: SessionDep, 
+    category: schemas.CategoryBase,
+    current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_MENU_ITEM]))
 ):
     query = select(Category)
     result = query.where(Category.name == category.name)
-    post = session.exec(result)
+    post = await session.exec(result)
     existing_category = post.first()
     
     if existing_category:
@@ -60,8 +63,8 @@ def post_category(
         name = category.name
     )
     session.add(new_category)
-    session.commit()
-    session.refresh(new_category)
+    await session.commit()
+    await session.refresh(new_category)
     
     if not new_category:
         raise HTTPException(
@@ -71,8 +74,12 @@ def post_category(
     return new_category
 
 @router.patch("/{id}", response_model=schemas.CategoryOut, status_code=status.HTTP_200_OK)
-def update_category(id:int, session: SessionDep, category: schemas.CategoryUpdate):
-    db_post = session.get(Category,id)
+async def update_category(id:int, 
+                    session: SessionDep, 
+                    category: schemas.CategoryUpdate,
+                    current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_MENU_ITEM]))
+                    ):
+    db_post = await session.get(Category,id)
     if db_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"couldn't find a category with id: {id}")
     update_post = category.model_dump(exclude_unset=True)
@@ -80,15 +87,18 @@ def update_category(id:int, session: SessionDep, category: schemas.CategoryUpdat
         setattr(db_post, field, value)
     db_post.updated_at = datetime.now()
     session.add(db_post)
-    session.commit()
-    session.refresh(db_post)
+    await session.commit()
+    await session.refresh(db_post)
     return db_post
 
 @router.delete("/{id}",status_code=status.HTTP_204_NO_CONTENT)
-def delete_category(id: int, session: SessionDep):
-    db_post = session.get(Category,id)
+async def delete_category(id: int, 
+                    session: SessionDep,
+                    current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_MENU_ITEM]))
+                    ):
+    db_post = await session.get(Category,id)
     if db_post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"couldn't find a category with id: {id}")
     session.delete(db_post)
-    session.commit()
+    await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
