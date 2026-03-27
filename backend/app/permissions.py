@@ -12,6 +12,14 @@ class Permission(str, Enum):
     UPDATE_MENU_ITEM = "update_menu_item"
     DELETE_MENU_ITEM = "delete_menu_item"
     
+    # Table permissions
+    VIEW_TABLES = "view_tables"
+    CREATE_TABLE = "create_table"
+    UPDATE_TABLE = "update_table"
+    DELETE_TABLE = "delete_table"
+    UPDATE_TABLE_STATUS = "update_table_status"
+    MANAGE_TABLES = "manage_tables"
+    
     # Order permissions
     VIEW_ORDERS = "view_orders"
     CREATE_ORDER = "create_order"
@@ -34,18 +42,15 @@ class Permission(str, Enum):
 
 ROLE_PERMISSIONS = {
     UserRole.MANAGER: [
-        Permission.VIEW_MENU, Permission.CREATE_MENU_ITEM, Permission.UPDATE_MENU_ITEM, Permission.DELETE_MENU_ITEM,
-        Permission.VIEW_ORDERS, Permission.CREATE_ORDER, Permission.UPDATE_ORDER, Permission.CANCEL_ORDER,
-        Permission.VIEW_INVENTORY, Permission.UPDATE_INVENTORY,
-        Permission.VIEW_STAFF, Permission.MANAGE_STAFF,
-        Permission.VIEW_SALES, Permission.PROCESS_PAYMENT, Permission.VIEW_REPORTS
+    permission for permission in Permission
     ],
     UserRole.STAFF: [
         Permission.VIEW_MENU, Permission.CREATE_MENU_ITEM, Permission.UPDATE_MENU_ITEM, Permission.DELETE_MENU_ITEM,
         Permission.VIEW_ORDERS, Permission.CREATE_ORDER, Permission.UPDATE_ORDER, Permission.CANCEL_ORDER,
         Permission.VIEW_INVENTORY,
         Permission.VIEW_STAFF,
-        Permission.VIEW_SALES, Permission.PROCESS_PAYMENT
+        Permission.VIEW_SALES, Permission.PROCESS_PAYMENT,
+        Permission.CREATE_TABLE, Permission.VIEW_TABLES,Permission.DELETE_TABLE, Permission.UPDATE_TABLE, Permission.UPDATE_TABLE_STATUS
     ]
 }
 

@@ -2,8 +2,15 @@ from __future__ import annotations
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional, Annotated, List
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Enum
 from .permissions import UserRole
+import enum
+
+class TableStatus(str, enum.Enum):
+    AVAILABLE = "available"
+    OCCUPIED = "occupied"
+    RESERVED = "reserved"
+
 
 # User Schemas
 class UserBase(BaseModel):
@@ -90,3 +97,32 @@ class ProductOut(ProductBase):
             "owner": product.owner
         }
         return cls(**product_dict)
+    
+    
+class TableBase(BaseModel):
+    table_number: str
+    capacity: int
+
+class TableCreate(TableBase):
+    status: TableStatus = TableStatus.AVAILABLE
+
+class TableUpdate(BaseModel):
+    table_number: Optional[str] = None
+    capacity: Optional[int] = None
+    status: Optional[TableStatus] = None
+    is_active: Optional[bool] = None
+
+class TableStatusUpdate(BaseModel):
+    status: TableStatus
+
+class TableOut(TableBase):
+    id: int
+    status: TableStatus
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    active_order_count: Optional[int] = 0
+    active_orders: Optional[List] = []
+    
+    class Config:
+        from_attributes = True
