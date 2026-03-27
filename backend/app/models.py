@@ -157,6 +157,7 @@ class Order(SQLModel, table=True):
     order_number: str = Field(index=True, unique=True, nullable=False)
     order_type: OrderType = Field(sa_column=Column(Enum(OrderType), nullable=False))
     table_id: Optional[int] = Field(default=None, foreign_key="tables.id")
+    party_id: Optional[str] = Field(default=None, index=True) 
     user_id: int = Field(foreign_key="users.id") 
     customer_name: Optional[str] = Field(default=None, max_length=100)
     subtotal: float = Field(default=0.0)

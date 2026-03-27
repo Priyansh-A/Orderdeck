@@ -2,36 +2,30 @@ from fastapi import Response, status, HTTPException, APIRouter, Depends
 from sqlmodel import select, and_
 from typing import List, Optional
 from datetime import datetime, timezone
-
+from sqlalchemy.orm import selectinload
 from ..database import SessionDep
 from .. import schemas, auth
 from ..models import Order, OrderItem, Product, Table, Payment
 from ..permissions import Permission
+from ..services.table_session import TableSessionManager
 
 router = APIRouter(
     prefix="/orders",
     tags=["Orders"]
 )
-
-# create order
+# add orders
 @router.post("/", response_model=schemas.OrderOut, status_code=status.HTTP_201_CREATED)
 async def create_order(
     session: SessionDep,
     order: schemas.OrderCreate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_ORDER]))
 ):
-    """
-    Create a new order
+    """ Creating orders """
+    order_number = f"ORD-{datetime.now().strftime('%Y%m%d%H%M%S%f')}-{current_user.id}"
     
-    - **order_type**: "dine_in" or "takeaway"
-    - **table_id**: Required for dine_in orders only
-    - **items**: List of products with quantities
-    - **customer_name**: Optional for dine_in, recommended for takeaway
-    """
-    # Generate unique order number (timestamp-based)
-    order_number = f"ORD-{datetime.now().strftime('%Y%m%d%H%M%S')}-{current_user.id}"
+    table = None
+    party_id = None
     
-    # Validate based on order type
     if order.order_type == "dine_in":
         if not order.table_id:
             raise HTTPException(
@@ -39,69 +33,53 @@ async def create_order(
                 detail="Table ID is required for dine-in orders"
             )
         
-        table = await session.get(Table, order.table_id)
-        if not table:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Table not found"
-            )
-        
-        # Table should be occupied or reserved
-        if table.status not in ["occupied", "reserved"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Table is {table.status}. Table must be occupied or reserved for dine-in orders."
-            )
-    
-    elif order.order_type == "takeaway":
-        # For takeaway, table_id should be None
-        if order.table_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Table ID should not be provided for takeaway orders"
-            )
-        
-        # Customer name is recommended for takeaway
         if not order.customer_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Customer name is required for takeaway orders"
+                detail="Customer name is required for dine-in orders"
             )
+        
+        table, party_id = await TableSessionManager.validate_and_get_party(
+            session, 
+            order.table_id, 
+            order.customer_name,
+            order.order_type
+        )
     
-    # Calculate order totals
-    subtotal = 0.0
-    order_items = []
-    
+    product_counts = {}
     for item in order.items:
-        product = await session.get(Product, item.product_id)
+        if item.product_id in product_counts:
+            product_counts[item.product_id] += item.quantity
+        else:
+            product_counts[item.product_id] = item.quantity
+    
+    subtotal = 0.0
+    order_items_data = []
+    
+    for product_id, quantity in product_counts.items():
+        product = await session.get(Product, product_id)
         if not product:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product with id {item.product_id} not found"
+                detail=f"Product with id {product_id} not found"
             )
         
-        if not product.is_available:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Product {product.name} is not available"
-            )
-        
-        item_subtotal = product.price * item.quantity
+        item_subtotal = product.price * quantity
         subtotal += item_subtotal
         
-        order_items.append({
-            "product": product,
-            "quantity": item.quantity,
+        order_items_data.append({
+            "product_id": product.id,
+            "quantity": quantity,
             "unit_price": product.price,
             "subtotal": item_subtotal,
-            "notes": item.notes
+            "notes": None
         })
     
-    # Create order
     new_order = Order(
         order_number=order_number,
         order_type=order.order_type,
         table_id=order.table_id if order.order_type == "dine_in" else None,
+        party_id=party_id,
         user_id=current_user.id,
         customer_name=order.customer_name,
         subtotal=subtotal,
@@ -112,11 +90,15 @@ async def create_order(
     session.add(new_order)
     await session.flush()
     
-    # Create order items
-    for item_data in order_items:
+    if order.order_type == "dine_in" and table and table.status == "available":
+        table.status = "occupied"
+        table.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        session.add(table)
+    
+    for item_data in order_items_data:
         order_item = OrderItem(
             order_id=new_order.id,
-            product_id=item_data["product"].id,
+            product_id=item_data["product_id"],
             quantity=item_data["quantity"],
             unit_price=item_data["unit_price"],
             subtotal=item_data["subtotal"],
@@ -125,78 +107,162 @@ async def create_order(
         session.add(order_item)
     
     await session.commit()
-    await session.refresh(new_order)
     
-    items_result = await session.exec(
-        select(OrderItem).where(OrderItem.order_id == new_order.id)
+    query = (
+        select(Order)
+        .where(Order.id == new_order.id)
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.product),
+            selectinload(Order.table),
+            selectinload(Order.user),
+            selectinload(Order.payment)
+        )
     )
-    new_order.items = items_result.all()
     
-    return new_order
+    result = await session.exec(query)
+    refreshed_order = result.one()
+    
+    return refreshed_order
 
-# get all orders
+# add more items to the order
+@router.post("/{order_id}/add-items", response_model=schemas.OrderOut)
+async def add_items_to_order(
+    session: SessionDep,
+    order_id: int,
+    items: List[schemas.OrderItemCreate],
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_ORDER]))
+):
+    """Add more items to an order"""
+    order = await session.get(Order, order_id)
+    
+    if not order:
+        raise HTTPException(404, "Order not found")
+    
+    if order.status in ["completed", "cancelled"]:
+        raise HTTPException(400, f"Cannot add items to {order.status} order")
+    
+    if order.order_type == "dine_in" and order.table_id:
+        table = await session.get(Table, order.table_id)
+        if table.status != "occupied":
+            raise HTTPException(400, "Table is no longer occupied")
+    
+    product_counts = {}
+    for item in items:
+        if item.product_id in product_counts:
+            product_counts[item.product_id] += item.quantity
+        else:
+            product_counts[item.product_id] = item.quantity
+    
+    for product_id, quantity in product_counts.items():
+        product = await session.get(Product, product_id)
+        if not product:
+            raise HTTPException(404, f"Product {product_id} not found")
+        
+        existing_item = None
+        for existing in order.items:
+            if existing.product_id == product_id:
+                existing_item = existing
+                break
+        
+        if existing_item:
+            existing_item.quantity += quantity
+            existing_item.subtotal = existing_item.unit_price * existing_item.quantity
+            session.add(existing_item)
+        else:
+            new_item = OrderItem(
+                order_id=order.id,
+                product_id=product.id,
+                quantity=quantity,
+                unit_price=product.price,
+                subtotal=product.price * quantity,
+                notes=None
+            )
+            session.add(new_item)
+        
+        order.subtotal += product.price * quantity
+        order.total_amount = order.subtotal
+    
+    order.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    session.add(order)
+    await session.commit()
+    
+    query = select(Order).where(Order.id == order.id).options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.table),
+        selectinload(Order.user),
+        selectinload(Order.payment)
+    )
+    result = await session.exec(query)
+    return result.one()
+
 @router.get("/", response_model=List[schemas.OrderOut], status_code=status.HTTP_200_OK)
 async def get_orders(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_ORDERS])),
     skip: int = 0,
     limit: int = 100,
-    status: Optional[str] = None,
+    status_filter: Optional[str] = None,
     order_type: Optional[str] = None
 ):
-    """Get all orders with optional filters"""
+    """Get all orders"""
     query = select(Order)
     
-    if status:
-        query = query.where(Order.status == status)
+    if status_filter:
+        query = query.where(Order.status == status_filter)
     if order_type:
         query = query.where(Order.order_type == order_type)
     
     query = query.order_by(Order.created_at.desc()).offset(skip).limit(limit)
+    query = query.options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.table),
+        selectinload(Order.user),
+        selectinload(Order.payment)
+    )
     
     result = await session.exec(query)
     orders = result.all()
     
-    # Load items for each order
-    for order in orders:
-        items_result = await session.exec(
-            select(OrderItem).where(OrderItem.order_id == order.id)
-        )
-        order.items = items_result.all()
-    
     return orders
 
-# get active orders
 @router.get("/active", response_model=List[schemas.OrderOut], status_code=status.HTTP_200_OK)
 async def get_active_orders(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_ORDERS]))
 ):
-    """Get all orders that are not completed or cancelled"""
+    """Only get active orders"""
     query = select(Order).where(
         Order.status.not_in(["completed", "cancelled"])
     ).order_by(Order.created_at)
     
+    query = query.options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.table),
+        selectinload(Order.user),
+        selectinload(Order.payment)
+    )
+    
     result = await session.exec(query)
     orders = result.all()
     
-    for order in orders:
-        items_result = await session.exec(
-            select(OrderItem).where(OrderItem.order_id == order.id)
-        )
-        order.items = items_result.all()
-    
     return orders
 
-# get specific order
 @router.get("/{id}", response_model=schemas.OrderOut, status_code=status.HTTP_200_OK)
 async def get_order(
     session: SessionDep,
     id: int,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_ORDERS]))
 ):
-    """Get a specific order by ID"""
-    order = await session.get(Order, id)
+    """Orders with specific id"""
+    query = select(Order).where(Order.id == id).options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.table),
+        selectinload(Order.user),
+        selectinload(Order.payment)
+    )
+    
+    result = await session.exec(query)
+    order = result.first()
     
     if not order:
         raise HTTPException(
@@ -204,29 +270,22 @@ async def get_order(
             detail=f"Order with id {id} not found"
         )
     
-    # Load order items
-    items_result = await session.exec(
-        select(OrderItem).where(OrderItem.order_id == order.id)
-    )
-    order.items = items_result.all()
-    
-    # Load payment if exists
-    payment_result = await session.exec(
-        select(Payment).where(Payment.order_id == order.id)
-    )
-    order.payment = payment_result.first()
-    
     return order
 
-# get order by number
 @router.get("/number/{order_number}", response_model=schemas.OrderOut, status_code=status.HTTP_200_OK)
 async def get_order_by_number(
     session: SessionDep,
     order_number: str,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_ORDERS]))
 ):
-    """Get order by order number"""
-    query = select(Order).where(Order.order_number == order_number)
+    """Orders with specific order number"""
+    query = select(Order).where(Order.order_number == order_number).options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.table),
+        selectinload(Order.user),
+        selectinload(Order.payment)
+    )
+    
     result = await session.exec(query)
     order = result.first()
     
@@ -236,14 +295,8 @@ async def get_order_by_number(
             detail=f"Order with number {order_number} not found"
         )
     
-    items_result = await session.exec(
-        select(OrderItem).where(OrderItem.order_id == order.id)
-    )
-    order.items = items_result.all()
-    
     return order
 
-# takeaway orders
 @router.get("/takeaway", response_model=List[schemas.OrderOut], status_code=status.HTTP_200_OK)
 async def get_takeaway_orders(
     session: SessionDep,
@@ -252,25 +305,21 @@ async def get_takeaway_orders(
     skip: int = 0,
     limit: int = 100
 ):
-    """
-    Get all takeaway orders
-    """
+    """Get only the takeaway orders"""
     query = select(Order).where(Order.order_type == "takeaway")
     
     if status_filter:
         query = query.where(Order.status == status_filter)
     
     query = query.order_by(Order.created_at.desc()).offset(skip).limit(limit)
+    query = query.options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.user),
+        selectinload(Order.payment)
+    )
     
     result = await session.exec(query)
     orders = result.all()
-    
-    # Load items for each order
-    for order in orders:
-        items_result = await session.exec(
-            select(OrderItem).where(OrderItem.order_id == order.id)
-        )
-        order.items = items_result.all()
     
     return orders
 
@@ -280,9 +329,7 @@ async def mark_takeaway_ready(
     id: int,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_ORDER_STATUS]))
 ):
-    """
-    Mark a takeaway order as ready for customer pickup
-    """
+    """Change status of takeaway products"""
     order = await session.get(Order, id)
     
     if not order:
@@ -303,24 +350,24 @@ async def mark_takeaway_ready(
             detail="Order already completed"
         )
     
-    # Update order status to ready
     order.status = "ready"
-    order.updated_at = datetime.now(timezone.utc)
+    order.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     
     session.add(order)
     await session.commit()
-    await session.refresh(order)
     
-    # Load items for response
-    items_result = await session.exec(
-        select(OrderItem).where(OrderItem.order_id == order.id)
+    query = select(Order).where(Order.id == id).options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.table),
+        selectinload(Order.user),
+        selectinload(Order.payment)
     )
-    order.items = items_result.all()
     
-    return order
+    result = await session.exec(query)
+    refreshed_order = result.one()
+    
+    return refreshed_order
 
-
-# update order status
 @router.patch("/{id}/status", response_model=schemas.OrderOut, status_code=status.HTTP_200_OK)
 async def update_order_status(
     session: SessionDep,
@@ -328,7 +375,7 @@ async def update_order_status(
     status_update: schemas.OrderStatusUpdate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_ORDER_STATUS]))
 ):
-    """Update order status (pending, preparing, ready, served, completed, cancelled)"""
+    """Change status of orders"""
     order = await session.get(Order, id)
     
     if not order:
@@ -337,41 +384,30 @@ async def update_order_status(
             detail=f"Order with id {id} not found"
         )
     
-    old_status = order.status
-    new_status = status_update.status
-    
-    # Validate status transition
-    if old_status == "completed" or old_status == "cancelled":
+    if order.status == "completed" or order.status == "cancelled":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot update status of {old_status} order"
+            detail=f"Cannot update status of {order.status} order"
         )
     
-    # Update order status
-    order.status = new_status
-    order.updated_at = datetime.now(timezone.utc)
-    
-    # If order is completed or cancelled, free up the table
-    if new_status in ["completed", "cancelled"] and order.table_id:
-        table = await session.get(Table, order.table_id)
-        if table:
-            table.status = "available"
-            table.updated_at = datetime.now(timezone.utc)
-            session.add(table)
+    order.status = status_update.status
+    order.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     
     session.add(order)
     await session.commit()
-    await session.refresh(order)
     
-    # Load items for response
-    items_result = await session.exec(
-        select(OrderItem).where(OrderItem.order_id == order.id)
+    query = select(Order).where(Order.id == id).options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.table),
+        selectinload(Order.user),
+        selectinload(Order.payment)
     )
-    order.items = items_result.all()
     
-    return order
+    result = await session.exec(query)
+    refreshed_order = result.one()
+    
+    return refreshed_order
 
-# cancel order
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def cancel_order(
     session: SessionDep,
@@ -393,17 +429,24 @@ async def cancel_order(
             detail=f"Cannot cancel order that is already {order.status}"
         )
     
-    # Cancel order
     order.status = "cancelled"
-    order.updated_at = datetime.now(timezone.utc)
+    order.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     
-    # Free up table if occupied
     if order.table_id:
-        table = await session.get(Table, order.table_id)
-        if table and table.status == "occupied":
-            table.status = "available"
-            table.updated_at = datetime.now(timezone.utc)
-            session.add(table)
+        other_active = await session.exec(
+            select(Order).where(
+                Order.table_id == order.table_id,
+                Order.status.not_in(["completed", "cancelled"]),
+                Order.id != order.id
+            )
+        )
+        
+        if not other_active.first():
+            table = await session.get(Table, order.table_id)
+            if table and table.status == "occupied":
+                table.status = "available"
+                table.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                session.add(table)
     
     session.add(order)
     await session.commit()

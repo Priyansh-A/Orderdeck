@@ -1,5 +1,5 @@
 from fastapi import Response, status, HTTPException, APIRouter, Depends
-from sqlmodel import select, or_
+from sqlmodel import select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -13,7 +13,8 @@ router = APIRouter(
     prefix="/tables",
     tags=["Tables"]
 )
-# get all tables
+
+
 @router.get("/", response_model=List[schemas.TableOut], status_code=status.HTTP_200_OK)
 async def get_tables(
     session: SessionDep,
@@ -23,9 +24,7 @@ async def get_tables(
     status_filter: Optional[str] = None,
     search: Optional[str] = None
 ):
-    """
-    Get all the tables with filtering and limits
-    """
+    """Get All Tables"""
     query = select(Table).where(Table.is_active == True)
     
     if status_filter:
@@ -41,7 +40,6 @@ async def get_tables(
     
     return tables
 
-# get only the available tables
 @router.get("/available", response_model=List[schemas.TableOut], status_code=status.HTTP_200_OK)
 async def get_available_tables(
     session: SessionDep,
@@ -49,15 +47,12 @@ async def get_available_tables(
     capacity: Optional[int] = None,
     guest_count: Optional[int] = None
 ):
-    """
-    Get all available tables
-    """
+    """Only get Available tables"""
     query = select(Table).where(
         Table.status == "available",
         Table.is_active == True
     )
     
-    # Filter by capacity
     if capacity:
         query = query.where(Table.capacity >= capacity)
     elif guest_count:
@@ -70,13 +65,12 @@ async def get_available_tables(
     
     return tables
 
-# get only the occupied and reserved tables
 @router.get("/occupied", response_model=List[schemas.TableOut], status_code=status.HTTP_200_OK)
 async def get_occupied_tables(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_TABLES]))
 ):
-    """Get all occupied tables"""
+    """Get occupied tables"""
     query = select(Table).where(
         Table.status != "available",
         Table.is_active == True        
@@ -87,16 +81,13 @@ async def get_occupied_tables(
     
     return tables
 
-# get specific table
 @router.get("/{id}", response_model=schemas.TableOut, status_code=status.HTTP_200_OK)
 async def get_table(
     session: SessionDep,
     id: int,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_TABLES]))
 ):
-    """
-    Get a specific table by ID with its current orders
-    """
+    """Get tables through Id"""
     query = select(Table).where(Table.id == id)
     result = await session.exec(query)
     table = result.first()
@@ -109,18 +100,13 @@ async def get_table(
     
     return table
 
-
-#  create table
 @router.post("/", response_model=schemas.TableOut, status_code=status.HTTP_201_CREATED)
 async def create_table(
     session: SessionDep,
     table: schemas.TableCreate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_TABLE]))
 ):
-    """
-    Create a new table
-    """
-    # Check if table number already exists
+    """Add a Table"""
     query = select(Table).where(Table.table_number == table.table_number)
     result = await session.exec(query)
     existing_table = result.first()
@@ -131,7 +117,6 @@ async def create_table(
             detail=f"Table with number {table.table_number} already exists"
         )
     
-    # Create new table
     new_table = Table(
         table_number=table.table_number,
         capacity=table.capacity,
@@ -145,7 +130,6 @@ async def create_table(
     
     return new_table
 
-# update table
 @router.patch("/{id}", response_model=schemas.TableOut, status_code=status.HTTP_200_OK)
 async def update_table(
     id: int,
@@ -153,13 +137,7 @@ async def update_table(
     table_update: schemas.TableUpdate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_TABLE]))
 ):
-    """
-    Update table details
-    - **table_number**: New table number (must be unique)
-    - **capacity**: New capacity
-    - **status**: New status
-    """
-    # Get existing table
+    """Update table data"""
     db_table = await session.get(Table, id)
     
     if db_table is None:
@@ -168,7 +146,6 @@ async def update_table(
             detail=f"Table with id {id} not found"
         )
     
-    # Check if table already exists
     if table_update.table_number and table_update.table_number != db_table.table_number:
         query = select(Table).where(Table.table_number == table_update.table_number)
         result = await session.exec(query)
@@ -179,7 +156,6 @@ async def update_table(
                 detail=f"Table number {table_update.table_number} already exists"
             )
     
-    # Update fields
     update_data = table_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_table, field, value)
@@ -191,7 +167,6 @@ async def update_table(
     
     return db_table
 
-# update table status
 @router.patch("/{id}/status", response_model=schemas.TableOut, status_code=status.HTTP_200_OK)
 async def update_table_status(
     id: int,
@@ -199,9 +174,7 @@ async def update_table_status(
     status_update: schemas.TableStatusUpdate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_TABLE_STATUS]))
 ):
-    """
-    Update table status (available, occupied)
-    """
+    """Update Table Status"""
     db_table = await session.get(Table, id)
     
     if db_table is None:
@@ -210,10 +183,7 @@ async def update_table_status(
             detail=f"Table with id {id} not found"
         )
     
-    new_status = status_update.status
-    
-    # Update the status
-    db_table.status = new_status
+    db_table.status = status_update.status
     db_table.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     
     session.add(db_table)
@@ -222,16 +192,13 @@ async def update_table_status(
     
     return db_table
 
-# remove non active tables
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_table(
     id: int,
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_TABLE]))
 ):
-    """
-    Soft delete a table (set is_active=False)
-    """
+    """Soft delete tables that are empty"""
     db_table = await session.get(Table, id)
     
     if db_table is None:
@@ -240,7 +207,6 @@ async def delete_table(
             detail=f"Table with id {id} not found"
         )
     
-    # Check if table has active orders
     active_orders = await session.exec(
         select(Order).where(
             Order.table_id == id,
@@ -255,24 +221,19 @@ async def delete_table(
         )
     
     db_table.is_active = False
-    db_table.updated_at = datetime.now(timezone.utc)
+    db_table.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(db_table)
     await session.commit()
     
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-# permanently delete table/force delete
 @router.delete("/{id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
 async def permanent_delete_table(
     id: int,
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_TABLE]))
 ):
-    """
-    Permanently delete a table (admin only)
-    
-    Use with caution! This will remove all order history for this table.
-    """
+    """Force Delete Tables"""
     db_table = await session.get(Table, id)
     
     if db_table is None:
@@ -281,7 +242,6 @@ async def permanent_delete_table(
             detail=f"Table with id {id} not found"
         )
     
-    # Check if table has any orders
     orders = await session.exec(select(Order).where(Order.table_id == id))
     if orders.first():
         raise HTTPException(
@@ -294,15 +254,12 @@ async def permanent_delete_table(
     
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-# reset all table status to available
 @router.post("/reset", status_code=status.HTTP_200_OK)
 async def reset_all_tables(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.MANAGE_TABLES]))
 ):
-    """
-    Reset all tables to available status
-    """
+    """Reset all table status to available"""
     query = select(Table).where(Table.is_active == True)
     result = await session.exec(query)
     tables = result.all()
@@ -322,3 +279,27 @@ async def reset_all_tables(
         "total_tables": len(tables),
         "reset_tables": reset_count
     }
+
+@router.post("/{id}/close-session", status_code=status.HTTP_200_OK)
+async def close_table_session(
+    id: int,
+    session: SessionDep,
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.MANAGE_TABLES]))
+):
+    """Close Table Session """
+    from ..services.table_session import TableSessionManager
+    
+    result = await TableSessionManager.close_table_session(session, id, current_user)
+    return result
+
+@router.get("/{id}/session-info", status_code=status.HTTP_200_OK)
+async def get_table_session_info(
+    id: int,
+    session: SessionDep,
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_TABLES]))
+):
+    """Details on the table session"""
+    from ..services.table_session import TableSessionManager
+    
+    result = await TableSessionManager.get_table_session_info(session, id)
+    return result

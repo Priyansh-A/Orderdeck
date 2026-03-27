@@ -180,14 +180,19 @@ class OrderUpdate(BaseModel):
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
-class OrderOut(OrderBase):
+class OrderOut(BaseModel):
     id: int
     order_number: str
+    order_type: OrderType
+    table_id: Optional[int]
+    party_id: Optional[str]  # Add this
     user_id: int
+    customer_name: Optional[str]
     subtotal: float
     total_amount: float
     status: OrderStatus
     payment_status: PaymentStatus
+    notes: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
     items: List[OrderItemOut] = []
