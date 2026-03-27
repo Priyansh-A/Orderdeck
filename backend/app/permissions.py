@@ -23,7 +23,7 @@ class Permission(str, Enum):
     # Order permissions
     VIEW_ORDERS = "view_orders"
     CREATE_ORDER = "create_order"
-    UPDATE_ORDER = "update_order"
+    UPDATE_ORDER_STATUS = "update_order"
     CANCEL_ORDER = "cancel_order"
     
     # Inventory permissions
@@ -34,10 +34,10 @@ class Permission(str, Enum):
     VIEW_STAFF = "view_staff"
     MANAGE_STAFF = "manage_staff"
     
-    # Financial permissions
-    VIEW_SALES = "view_sales"
+    # Payment permissions
+    VIEW_PAYMENTS = "view_payments"
     PROCESS_PAYMENT = "process_payment"
-    VIEW_REPORTS = "view_reports"
+    REFUND_PAYMENT = "refund_payment"
     
 
 ROLE_PERMISSIONS = {
@@ -46,11 +46,12 @@ ROLE_PERMISSIONS = {
     ],
     UserRole.STAFF: [
         Permission.VIEW_MENU, Permission.CREATE_MENU_ITEM, Permission.UPDATE_MENU_ITEM, Permission.DELETE_MENU_ITEM,
-        Permission.VIEW_ORDERS, Permission.CREATE_ORDER, Permission.UPDATE_ORDER, Permission.CANCEL_ORDER,
+        Permission.VIEW_ORDERS, Permission.CREATE_ORDER, Permission.UPDATE_ORDER_STATUS, Permission.CANCEL_ORDER,
         Permission.VIEW_INVENTORY,
         Permission.VIEW_STAFF,
-        Permission.VIEW_SALES, Permission.PROCESS_PAYMENT,
-        Permission.CREATE_TABLE, Permission.VIEW_TABLES,Permission.DELETE_TABLE, Permission.UPDATE_TABLE, Permission.UPDATE_TABLE_STATUS
+        Permission.PROCESS_PAYMENT,
+        Permission.CREATE_TABLE, Permission.VIEW_TABLES,Permission.DELETE_TABLE, Permission.UPDATE_TABLE, Permission.UPDATE_TABLE_STATUS, 
+        Permission.VIEW_PAYMENTS, Permission.PROCESS_PAYMENT
     ]
 }
 

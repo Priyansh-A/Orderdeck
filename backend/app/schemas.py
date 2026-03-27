@@ -9,8 +9,27 @@ import enum
 class TableStatus(str, enum.Enum):
     AVAILABLE = "available"
     OCCUPIED = "occupied"
-    RESERVED = "reserved"
 
+class OrderType(str, enum.Enum):
+    DINE_IN = "dine_in"
+    TAKEAWAY = "takeaway"
+    
+class OrderStatus(str, enum.Enum):
+    PENDING = "pending"
+    PREPARING = "preparing"
+    READY = "ready"
+    SERVED = "served"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+class PaymentStatus(str, enum.Enum):
+    PENDING = "pending"
+    PAID = "paid"
+    FAILED = "failed"
+
+class PaymentMethod(str, enum.Enum):
+    CASH = "cash"
+    ONLINE = "online"
 
 # User Schemas
 class UserBase(BaseModel):
@@ -126,3 +145,74 @@ class TableOut(TableBase):
     
     class Config:
         from_attributes = True
+        
+class OrderItemBase(BaseModel):
+    product_id: int
+    quantity: int = Field(ge=1)
+    notes: Optional[str] = None
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItemOut(OrderItemBase):
+    id: int
+    unit_price: float
+    subtotal: float
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class OrderBase(BaseModel):
+    order_type: OrderType
+    table_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class OrderCreate(OrderBase):
+    items: List[OrderItemCreate]
+    customer_name: Optional[str] = None
+
+class OrderUpdate(BaseModel):
+    status: Optional[OrderStatus] = None
+    notes: Optional[str] = None
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus
+
+class OrderOut(OrderBase):
+    id: int
+    order_number: str
+    user_id: int
+    subtotal: float
+    total_amount: float
+    status: OrderStatus
+    payment_status: PaymentStatus
+    created_at: datetime
+    updated_at: Optional[datetime]
+    items: List[OrderItemOut] = []
+    payment: Optional["PaymentOut"] = None
+    
+    class Config:
+        from_attributes = True
+
+class PaymentBase(BaseModel):
+    order_id: int
+    payment_method: PaymentMethod
+    transaction_id: Optional[str] = None
+    payment_data: Optional[str] = None
+
+class PaymentCreate(PaymentBase):
+    pass
+
+class PaymentOut(PaymentBase):
+    id: int
+    amount: float
+    status: PaymentStatus
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Forward reference for OrderOut
+OrderOut.model_rebuild()

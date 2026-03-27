@@ -39,15 +39,6 @@ async def get_tables(
     result = await session.exec(query)
     tables = result.all()
     
-    for table in tables:
-        active_orders = await session.exec(
-            select(Order).where(
-                Order.table_id == table.id,
-                Order.status.not_in(["completed", "cancelled"])
-            )
-        )
-        table.active_order_count = len(active_orders.all())
-    
     return tables
 
 # get only the available tables
@@ -85,24 +76,14 @@ async def get_occupied_tables(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_TABLES]))
 ):
-    """Get all occupied tables with their active orders"""
+    """Get all occupied tables"""
     query = select(Table).where(
-        Table.status.in_(["occupied", "reserved"]),
-        Table.is_active == True
+        Table.status != "available",
+        Table.is_active == True        
     ).order_by(Table.table_number)
     
     result = await session.exec(query)
     tables = result.all()
-    
-    # Load active orders for each table
-    for table in tables:
-        orders = await session.exec(
-            select(Order).where(
-                Order.table_id == table.id,
-                Order.status.not_in(["completed", "cancelled"])
-            ).order_by(Order.created_at.desc())
-        )
-        table.active_orders = orders.all()
     
     return tables
 
@@ -125,15 +106,6 @@ async def get_table(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Table with id {id} not found"
         )
-    
-    # Get active orders for this table
-    active_orders = await session.exec(
-        select(Order).where(
-            Order.table_id == table.id,
-            Order.status.not_in(["completed", "cancelled"])
-        ).order_by(Order.created_at.desc())
-    )
-    table.active_orders = active_orders.all()
     
     return table
 
@@ -212,7 +184,7 @@ async def update_table(
     for field, value in update_data.items():
         setattr(db_table, field, value)
     
-    db_table.updated_at = datetime.now(timezone.utc)
+    db_table.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(db_table)
     await session.commit()
     await session.refresh(db_table)
@@ -228,7 +200,7 @@ async def update_table_status(
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_TABLE_STATUS]))
 ):
     """
-    Update table status (available, occupied, reserved)
+    Update table status (available, occupied)
     """
     db_table = await session.get(Table, id)
     
@@ -238,33 +210,17 @@ async def update_table_status(
             detail=f"Table with id {id} not found"
         )
     
-    # Validate status transition
-    old_status = db_table.status
     new_status = status_update.status
     
-    # If table is occupied, check if there are active orders
-    if new_status == "occupied" and old_status != "occupied":
-        active_orders = await session.exec(
-            select(Order).where(
-                Order.table_id == id,
-                Order.status.not_in(["completed", "cancelled"])
-            )
-        )
-        if not active_orders.first():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot mark table as occupied without active orders"
-            )
-    
+    # Update the status
     db_table.status = new_status
-    db_table.updated_at = datetime.now(timezone.utc)
+    db_table.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     
     session.add(db_table)
     await session.commit()
     await session.refresh(db_table)
     
     return db_table
-
 
 # remove non active tables
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -355,7 +311,7 @@ async def reset_all_tables(
     for table in tables:
         if table.status != "available":
             table.status = "available"
-            table.updated_at = datetime.now(timezone.utc)
+            table.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             session.add(table)
             reset_count += 1
     

@@ -7,7 +7,6 @@ import enum
 class TableStatus(str, enum.Enum):
     AVAILABLE = "available"
     OCCUPIED = "occupied"
-    RESERVED = "reserved"
 
 class OrderType(str, enum.Enum):
     DINE_IN = "dine_in"
@@ -61,7 +60,8 @@ class User(SQLModel, table=True):
         )
     )
     role: str = Field(index=True, nullable=False)
-    
+    # Relationships
+    orders: List["Order"] = Relationship(back_populates="user")
     
 class Category(SQLModel, table=True):
     __tablename__ = "categories"
@@ -112,8 +112,8 @@ class Product(SQLModel, table=True):
     )
     category_id: int = Field(foreign_key="categories.id")
     # relationships
-    category: Optional[Category] = Relationship(back_populates="products")
-
+    owner: Optional[Category] = Relationship(back_populates="products")
+    order_items: List["OrderItem"] = Relationship(back_populates="product")  
 
 class Table(SQLModel, table=True):
     __tablename__ = "tables"
@@ -183,6 +183,10 @@ class Order(SQLModel, table=True):
             "nullable": True
         }
     )
+    table: Optional[Table] = Relationship(back_populates="orders")
+    user: Optional[User] = Relationship(back_populates="orders")
+    items: List["OrderItem"] = Relationship(back_populates="order")
+    payment: Optional["Payment"] = Relationship(back_populates="order")
 
 
 class OrderItem(SQLModel, table=True):
@@ -202,7 +206,8 @@ class OrderItem(SQLModel, table=True):
             server_default=text('CURRENT_TIMESTAMP')
         )
     )
-    
+    order: Order = Relationship(back_populates="items")
+    product: Product = Relationship(back_populates="order_items")
     
 class Payment(SQLModel, table=True):
     __tablename__ = "payments"
