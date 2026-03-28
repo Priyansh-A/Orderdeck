@@ -3,11 +3,10 @@ from ..permissions import *
 from ..models import Category, Product
 from fastapi import Response, status, HTTPException, APIRouter, Depends, Request
 from sqlalchemy.orm import selectinload
-from sqlmodel import select, func
+from sqlmodel import select
 from ..database import SessionDep
-from datetime import datetime
-from typing import List, Optional
-from time import timezone
+from datetime import datetime, timezone
+from typing import List
 
 router = APIRouter(
     prefix="/products",
@@ -18,23 +17,37 @@ router = APIRouter(
 async def get_products(
     request: Request,
     session: SessionDep,
-    current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
 ):
-    query = select(Product).options(selectinload(Product.owner))
+    query = select(Product).options(selectinload(Product.category))
     result = await session.exec(query)
-    posts = result.all()
+    products = result.all()
     
     base_url = str(request.base_url).rstrip('/')
-
-    if not posts:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Couldn't find any products"
-        )
-
+    
+    if not products:
+        return []
+    
     return [
-        schemas.ProductOut.from_orm_with_url(post,base_url)
-        for post in posts
+        schemas.ProductOut.from_orm_with_url(product, base_url)
+        for product in products
+    ]
+
+@router.get("/available", response_model=List[schemas.ProductOut], status_code=status.HTTP_200_OK)
+async def get_available_products(
+    request: Request,
+    session: SessionDep,
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
+):
+    query = select(Product).where(Product.is_available == True).options(selectinload(Product.category))
+    result = await session.exec(query)
+    products = result.all()
+    
+    base_url = str(request.base_url).rstrip('/')
+    
+    return [
+        schemas.ProductOut.from_orm_with_url(product, base_url)
+        for product in products
     ]
 
 @router.get("/{id}", response_model=schemas.ProductOut, status_code=status.HTTP_200_OK)
@@ -42,31 +55,31 @@ async def get_product(
     request: Request,
     session: SessionDep,
     id: int,
-    current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
 ):
-    query = select(Product).where(Product.id == id).options(selectinload(Product.owner))
+    query = select(Product).where(Product.id == id).options(selectinload(Product.category))
     result = await session.exec(query)
-    post = result.first()
+    product = result.first()
     
-    if not post:
+    if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Couldn't find product with id: {id}"
         )
+    
     base_url = str(request.base_url).rstrip('/')
-    return schemas.ProductOut.from_orm_with_url(post,base_url)
+    return schemas.ProductOut.from_orm_with_url(product, base_url)
         
-@router.post("/", response_model=schemas.ProductBase, status_code=status.HTTP_201_CREATED)
-async def post_product(
+@router.post("/", response_model=schemas.ProductOut, status_code=status.HTTP_201_CREATED)
+async def create_product(
     request: Request,
     session: SessionDep, 
-    product: schemas.ProductBase,
-    current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_MENU_ITEM]))
+    product: schemas.ProductCreate,
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_MENU_ITEM]))
 ):
-    query = select(Product)
-    result = query.where(Product.name == product.name)
-    post = await session.exec(result)
-    existing = post.first()
+    query = select(Product).where(Product.name == product.name)
+    result = await session.exec(query)
+    existing = result.first()
     
     if existing:
         raise HTTPException(
@@ -81,31 +94,33 @@ async def post_product(
             detail=f"Category with id {product.category_id} does not exist"
         )
         
-    new = Product(
-        name = product.name,
-        price = product.price,
-        category_id = product.category_id,
-        image_url=product.image_url
+    new_product = Product(
+        name=product.name,
+        description=product.description,
+        price=product.price,
+        category_id=product.category_id,
+        image_url=product.image_url,
+        is_available=product.is_available
     )
-    session.add(new)
+    session.add(new_product)
     await session.commit()
-    await session.refresh(new)
+    await session.refresh(new_product)
+    await session.refresh(new_product, ["category"])
     
-    await session.refresh(new, ["owner"])
-
     base_url = str(request.base_url).rstrip('/')
-    return schemas.ProductOut.from_orm_with_url(new, base_url)
+    return schemas.ProductOut.from_orm_with_url(new_product, base_url)
 
 @router.patch("/{id}", response_model=schemas.ProductOut, status_code=status.HTTP_200_OK)
-async def update_product(id:int,
-                request: Request,
-                session: SessionDep, 
-                product: schemas.ProductUpdate,
-                current_user:schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_MENU_ITEM]))
-                ):
-    db_product = await session.get(Product,id)
+async def update_product(
+    id: int,
+    request: Request,
+    session: SessionDep, 
+    product: schemas.ProductUpdate,
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_MENU_ITEM]))
+):
+    db_product = await session.get(Product, id)
     if db_product is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"couldn't find a product with id: {id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Couldn't find a product with id: {id}")
     
     if product.category_id and product.category_id != db_product.category_id:
         category = await session.get(Category, product.category_id)
@@ -119,11 +134,11 @@ async def update_product(id:int,
     for field, value in update_data.items():
         setattr(db_product, field, value)
     
-    db_product.updated_at = datetime.now(timezone.utc)
+    db_product.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(db_product)
     await session.commit()
     await session.refresh(db_product)
-    await session.refresh(db_product, ["owner"])
+    await session.refresh(db_product, ["category"])
     
     base_url = str(request.base_url).rstrip('/')
     return schemas.ProductOut.from_orm_with_url(db_product, base_url)

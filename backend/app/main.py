@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from .database import engine
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .routers import category, product, user, user_auth, tables, orders, payments
+from .routers import category, product, user, user_auth, tables, orders, cart
 from contextlib import asynccontextmanager
 import os
 from pathlib import Path
@@ -46,7 +46,7 @@ app.include_router(user.router)
 app.include_router(user_auth.router)
 app.include_router(tables.router)
 app.include_router(orders.router)
-app.include_router(payments.router)
+app.include_router(cart.router)
 
 
 

@@ -4,6 +4,7 @@ from typing import List
 class UserRole(str, Enum):
     MANAGER = "manager"
     STAFF = "staff"
+    KITCHEN = "kitchen"  # Added kitchen role
 
 class Permission(str, Enum):
     # Menu permissions
@@ -23,8 +24,17 @@ class Permission(str, Enum):
     # Order permissions
     VIEW_ORDERS = "view_orders"
     CREATE_ORDER = "create_order"
-    UPDATE_ORDER_STATUS = "update_order"
+    UPDATE_ORDER_STATUS = "update_order_status"
     CANCEL_ORDER = "cancel_order"
+    DELETE_ORDER = "delete_order"
+    VIEW_ALL_ORDERS = "view_all_orders"
+    
+    # Cart permissions
+    VIEW_CART = "view_cart"
+    ADD_TO_CART = "add_to_cart"
+    UPDATE_CART = "update_cart"
+    CLEAR_CART = "clear_cart"
+    CHECKOUT = "checkout"
     
     # Inventory permissions
     VIEW_INVENTORY = "view_inventory"
@@ -39,19 +49,44 @@ class Permission(str, Enum):
     PROCESS_PAYMENT = "process_payment"
     REFUND_PAYMENT = "refund_payment"
     
+    # Kitchen permissions
+    VIEW_KITCHEN = "view_kitchen"
+    UPDATE_KITCHEN_STATUS = "update_kitchen_status"
 
 ROLE_PERMISSIONS = {
     UserRole.MANAGER: [
-    permission for permission in Permission
+        permission for permission in Permission
     ],
     UserRole.STAFF: [
-        Permission.VIEW_MENU, Permission.CREATE_MENU_ITEM, Permission.UPDATE_MENU_ITEM, Permission.DELETE_MENU_ITEM,
-        Permission.VIEW_ORDERS, Permission.CREATE_ORDER, Permission.UPDATE_ORDER_STATUS, Permission.CANCEL_ORDER,
+        Permission.VIEW_MENU,
+        Permission.CREATE_MENU_ITEM,
+        Permission.UPDATE_MENU_ITEM,
+        Permission.DELETE_MENU_ITEM,
+        Permission.VIEW_TABLES,
+        Permission.CREATE_TABLE,
+        Permission.UPDATE_TABLE,
+        Permission.DELETE_TABLE,
+        Permission.UPDATE_TABLE_STATUS,
+        Permission.VIEW_ORDERS,
+        Permission.CREATE_ORDER,
+        Permission.UPDATE_ORDER_STATUS,
+        Permission.CANCEL_ORDER,
+        Permission.VIEW_CART,
+        Permission.ADD_TO_CART,
+        Permission.UPDATE_CART,
+        Permission.CLEAR_CART,
+        Permission.CHECKOUT,
         Permission.VIEW_INVENTORY,
         Permission.VIEW_STAFF,
+        Permission.VIEW_PAYMENTS,
         Permission.PROCESS_PAYMENT,
-        Permission.CREATE_TABLE, Permission.VIEW_TABLES,Permission.DELETE_TABLE, Permission.UPDATE_TABLE, Permission.UPDATE_TABLE_STATUS, 
-        Permission.VIEW_PAYMENTS, Permission.PROCESS_PAYMENT
+    ],
+    UserRole.KITCHEN: [
+        Permission.VIEW_MENU,
+        Permission.VIEW_ORDERS,
+        Permission.VIEW_KITCHEN,
+        Permission.UPDATE_KITCHEN_STATUS,
+        Permission.VIEW_INVENTORY,
     ]
 }
 
@@ -60,9 +95,3 @@ def has_permission(user_role: UserRole, permission: Permission) -> bool:
 
 def get_user_permissions(user_role: UserRole) -> List[Permission]:
     return ROLE_PERMISSIONS.get(user_role, [])
-
-# Helper decorator for routes
-def requires_permissions(permissions: List[Permission]):
-    def decorator(func):
-        return func
-    return decorator
