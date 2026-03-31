@@ -17,6 +17,7 @@ async def create_user(
     user: schemas.UserCreate,
     session: SessionDep
 ):
+    """Add a user"""
     query = select(User).where(
         (User.username == user.username) | 
         (User.email == user.email)
@@ -44,6 +45,7 @@ async def get_users(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_STAFF]))
 ):
+    """Get all users"""
     query = select(User)
     result = await session.exec(query)
     users = result.all()
@@ -56,6 +58,7 @@ async def get_user(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_STAFF]))
 ):
+    """Get specific user with Id"""
     user = await session.get(User, id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {id} does not exist")
@@ -68,6 +71,7 @@ async def update_user(
     session: SessionDep, 
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.MANAGE_STAFF]))
 ):
+    """Update user info"""
     db_user = await session.get(User, id)
     if db_user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Couldn't find a user with id: {id}")
@@ -88,6 +92,7 @@ async def delete_user(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.MANAGE_STAFF]))
 ):
+    """Remove a user"""
     deleted_user = await session.get(User, id)
     if deleted_user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {id} does not exist")

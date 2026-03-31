@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from .database import engine
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .routers import category, product, user, user_auth, tables, orders, cart
+from .routers import category, product, user, user_auth, tables, orders, cart, recommendations
 from contextlib import asynccontextmanager
 import os
 from pathlib import Path
@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,10 +36,11 @@ app.add_middleware(
     expose_headers=["*"],      
 )
 
-
+# media
 assets_path = Path(__file__).parent / "assets"
 app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
+# routes
 app.include_router(category.router)
 app.include_router(product.router)
 app.include_router(user.router)
@@ -47,8 +48,7 @@ app.include_router(user_auth.router)
 app.include_router(tables.router)
 app.include_router(orders.router)
 app.include_router(cart.router)
-
-
+app.include_router(recommendations.router)
 
 @app.get("/")
 def read_root():

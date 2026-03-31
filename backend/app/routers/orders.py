@@ -22,7 +22,7 @@ async def checkout(
 ):
     """Convert cart to order"""
     
-    # Load cart with items eagerly
+    # Load eagerly
     cart_query = (
         select(Cart)
         .where(Cart.id == checkout_data.cart_id, Cart.user_id == current_user.id)
@@ -51,15 +51,12 @@ async def checkout(
         if not table:
             raise HTTPException(status_code=404, detail="Table not found")
         
-        # Check if table is already occupied
         if table.status == "occupied":
-            # Table is occupied by someone else
             raise HTTPException(
                 status_code=400, 
                 detail=f"Table {table.table_number} is already occupied by {table.occupied_by_customer or 'another party'}"
             )
         
-        # Generate new party_id for this order
         party_id = f"PARTY-{table.id}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
         table.status = "occupied"
         table.occupied_by_party_id = party_id
@@ -148,6 +145,7 @@ async def get_orders(
     status_filter: Optional[str] = None,
     order_type: Optional[str] = None
 ):
+    """Get all Orders"""
     query = select(Order)
     
     if status_filter:
@@ -171,6 +169,7 @@ async def get_active_orders(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_ORDERS]))
 ):
+    """Get active orders"""
     query = select(Order).where(
         Order.status.not_in(["completed", "cancelled"])
     ).order_by(Order.created_at)
@@ -190,6 +189,7 @@ async def get_order(
     id: int,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_ORDERS]))
 ):
+    """Get specific order with Id"""
     query = select(Order).where(Order.id == id).options(
         selectinload(Order.items).selectinload(OrderItem.product),
         selectinload(Order.table),
@@ -212,6 +212,7 @@ async def update_order_status(
     status_update: schemas.OrderStatusUpdate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_ORDER_STATUS]))
 ):
+    """Update Order Status"""
     order = await session.get(Order, id)
     
     if not order:
@@ -297,8 +298,7 @@ async def permanent_delete_order(
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_ORDER]))
 ):
     """
-    Permanently delete an order (hard delete)
-    Use with caution! This removes the order from the database completely.
+    Permanently delete an order
     """
     order = await session.get(Order, id)
     
@@ -308,24 +308,20 @@ async def permanent_delete_order(
             detail=f"Order with id {id} not found"
         )
     
-    # Check if order has associated payment
     payment = await session.exec(
         select(Payment).where(Payment.order_id == id)
     )
     payment = payment.first()
     
     if payment:
-        # Delete payment first (or handle accordingly)
         await session.delete(payment)
     
-    # Delete all order items
     items = await session.exec(
         select(OrderItem).where(OrderItem.order_id == id)
     )
     for item in items.all():
         await session.delete(item)
     
-    # Finally delete the order
     await session.delete(order)
     await session.commit()
     
@@ -337,6 +333,7 @@ async def cancel_order(
     id: int,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CANCEL_ORDER]))
 ):
+    """Cancel an order"""
     order = await session.get(Order, id)
     
     if not order:

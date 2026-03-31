@@ -4,7 +4,7 @@ from typing import List
 class UserRole(str, Enum):
     MANAGER = "manager"
     STAFF = "staff"
-    KITCHEN = "kitchen"  # Added kitchen role
+    KITCHEN = "kitchen"
 
 class Permission(str, Enum):
     # Menu permissions
@@ -52,6 +52,10 @@ class Permission(str, Enum):
     # Kitchen permissions
     VIEW_KITCHEN = "view_kitchen"
     UPDATE_KITCHEN_STATUS = "update_kitchen_status"
+
+    # Recommendation permissions
+    VIEW_RECOMMENDATIONS = "view_recommendations"
+    TRAIN_MODEL = "train_model"
 
 ROLE_PERMISSIONS = {
     UserRole.MANAGER: [

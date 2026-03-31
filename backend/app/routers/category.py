@@ -18,6 +18,7 @@ async def get_categories(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
 ):
+    """Get Categories"""
     query = select(Category)
     result = await session.exec(query)
     categories = result.all()
@@ -33,6 +34,7 @@ async def get_category(
     id: int,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))    
 ):
+    """Get category based on Id"""
     category = await session.get(Category, id)
     
     if not category:
@@ -48,6 +50,7 @@ async def create_category(
     category: schemas.CategoryCreate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_MENU_ITEM]))
 ):
+    """Add a category"""
     query = select(Category).where(Category.name == category.name)
     result = await session.exec(query)
     existing_category = result.first()
@@ -72,6 +75,7 @@ async def update_category(
     category: schemas.CategoryUpdate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_MENU_ITEM]))
 ):
+    """Update category Values"""
     db_category = await session.get(Category, id)
     if db_category is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Couldn't find a category with id: {id}")
@@ -92,6 +96,7 @@ async def delete_category(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_MENU_ITEM]))
 ):
+    """Remove Category"""
     db_category = await session.get(Category, id)
     if db_category is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Couldn't find a category with id: {id}")

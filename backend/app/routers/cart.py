@@ -39,7 +39,6 @@ async def get_active_cart(
         await session.commit()
         await session.refresh(cart)
     
-    # Build items list
     items_list = []
     subtotal = 0
     total_items = 0
@@ -79,7 +78,7 @@ async def add_to_cart(
     item: schemas.CartItemCreate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.ADD_TO_CART]))
 ):
-    # Get or create cart
+    """Add items to the cart"""
     cart_query = (
         select(Cart)
         .where(Cart.user_id == current_user.id)
@@ -124,13 +123,11 @@ async def add_to_cart(
         )
         session.add(new_item)
     
-    # Update cart timestamp
     cart.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(cart)
     
     await session.commit()
     
-    # Don't use the cart object from before, query fresh with joins
     fresh_query = (
         select(Cart)
         .where(Cart.id == cart.id)
@@ -142,12 +139,11 @@ async def add_to_cart(
     result = await session.exec(fresh_query)
     fresh_cart = result.one()
     
-    # Build items list
     items_list = []
     subtotal = 0
     total_items = 0
     
-    # Force load items by accessing them (this triggers the eager load)
+    # Force load items
     cart_items = list(fresh_cart.items)
     
     for cart_item in cart_items:
@@ -273,9 +269,7 @@ async def set_cart_table(
         raise HTTPException(status_code=404, detail="Table not found")
     
     if table.status == "occupied":
-        # Check if it's occupied by the same user's party
         if table.occupied_by_party_id:
-            # You might want to check if this cart belongs to that party
             pass
         else:
             raise HTTPException(status_code=400, detail="Table is already occupied")
@@ -296,7 +290,7 @@ async def set_cart_table(
     session.add(cart)
     await session.commit()
     
-    # Refresh with items
+    # Refresh
     fresh_query = (
         select(Cart)
         .where(Cart.id == cart.id)

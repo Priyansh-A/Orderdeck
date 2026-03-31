@@ -19,6 +19,7 @@ async def get_products(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
 ):
+    """Get products"""
     query = select(Product).options(selectinload(Product.category))
     result = await session.exec(query)
     products = result.all()
@@ -39,6 +40,7 @@ async def get_available_products(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
 ):
+    """Get available Products"""
     query = select(Product).where(Product.is_available == True).options(selectinload(Product.category))
     result = await session.exec(query)
     products = result.all()
@@ -57,6 +59,7 @@ async def get_product(
     id: int,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_MENU]))
 ):
+    """Get specific product with Id"""
     query = select(Product).where(Product.id == id).options(selectinload(Product.category))
     result = await session.exec(query)
     product = result.first()
@@ -77,6 +80,7 @@ async def create_product(
     product: schemas.ProductCreate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_MENU_ITEM]))
 ):
+    """Add a product"""
     query = select(Product).where(Product.name == product.name)
     result = await session.exec(query)
     existing = result.first()
@@ -118,6 +122,7 @@ async def update_product(
     product: schemas.ProductUpdate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_MENU_ITEM]))
 ):
+    """Update product info"""
     db_product = await session.get(Product, id)
     if db_product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Couldn't find a product with id: {id}")
@@ -149,6 +154,7 @@ async def delete_product(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_MENU_ITEM]))
 ):
+    """Remove a product"""
     db_product = await session.get(Product, id)
     if db_product is None:
         raise HTTPException(

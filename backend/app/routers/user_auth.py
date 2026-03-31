@@ -14,6 +14,7 @@ async def login(
     session: SessionDep, 
     user_credentials: OAuth2PasswordRequestForm = Depends()
 ):
+    """Log in user"""
     query = select(models.User).where(models.User.username == user_credentials.username)
     result = await session.exec(query)
     user = result.first()

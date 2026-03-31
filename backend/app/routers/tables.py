@@ -21,6 +21,7 @@ async def get_tables(
     limit: int = 100,
     status_filter: Optional[str] = None
 ):
+    """Get all tables"""
     query = select(Table).where(Table.is_active == True)
     
     if status_filter:
@@ -39,6 +40,7 @@ async def get_available_tables(
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_TABLES])),
     capacity: Optional[int] = None
 ):
+    """Get available tables"""
     query = select(Table).where(
         Table.status == "available",
         Table.is_active == True
@@ -59,6 +61,7 @@ async def get_occupied_tables(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_TABLES]))
 ):
+    """Get occupied tables"""
     query = select(Table).where(
         Table.status == "occupied",
         Table.is_active == True        
@@ -75,6 +78,7 @@ async def get_table(
     id: int,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.VIEW_TABLES]))
 ):
+    """Get a specific table with Id"""
     table = await session.get(Table, id)
     
     if not table:
@@ -91,6 +95,7 @@ async def create_table(
     table: schemas.TableCreate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_TABLE]))
 ):
+    """Add a table"""
     query = select(Table).where(Table.table_number == table.table_number)
     result = await session.exec(query)
     existing_table = result.first()
@@ -121,6 +126,7 @@ async def update_table(
     table_update: schemas.TableUpdate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_TABLE]))
 ):
+    """Update table info"""
     db_table = await session.get(Table, id)
     
     if db_table is None:
@@ -157,6 +163,7 @@ async def update_table_status(
     status_update: schemas.TableStatusUpdate,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_TABLE_STATUS]))
 ):
+    """Update table status"""
     db_table = await session.get(Table, id)
     
     if db_table is None:
@@ -187,6 +194,7 @@ async def occupy_table(
     party_id: str,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_TABLE_STATUS]))
 ):
+    """Occupy a table"""
     db_table = await session.get(Table, id)
     
     if db_table is None:
@@ -219,6 +227,7 @@ async def delete_table(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_TABLE]))
 ):
+    """Delete a table"""
     db_table = await session.get(Table, id)
     
     if db_table is None:
@@ -252,6 +261,7 @@ async def reset_all_tables(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.MANAGE_TABLES]))
 ):
+    """Reset all table status"""
     query = select(Table).where(Table.is_active == True)
     result = await session.exec(query)
     tables = result.all()
