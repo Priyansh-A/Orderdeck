@@ -30,14 +30,17 @@ async def lifespan(app: FastAPI):
 class CSPMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
+        
+        if "/docs" in request.url.path or "/openapi.json" in request.url.path:
+            return response
+        
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 https://rc-epay.esewa.com.np; "
-            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 https://rc-epay.esewa.com.np https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
             "img-src 'self' data: https: http:; "
             "font-src 'self' data:; "
-            "frame-src https://rc-epay.esewa.com.np; " 
-            "connect-src 'self' http://localhost:8000 http://localhost:5173 https://rc-epay.esewa.com.np https://esewa.com.np;"
+            "connect-src 'self' http://localhost:8000 http://localhost:5173 https://rc-epay.esewa.com.np;"
         )
         return response
 
@@ -83,5 +86,5 @@ app.include_router(recommendations.router)
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+    return {"message": "Hello World"}
 

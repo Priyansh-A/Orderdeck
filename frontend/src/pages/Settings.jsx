@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { MdPeople, MdRecommend, MdCategory, MdRestaurantMenu } from 'react-icons/md';
+import { MdPeople, MdRecommend, MdCategory, MdRestaurantMenu, MdCloudUpload } from 'react-icons/md';
 import UsersTab from '../components/Settings/UsersTab';
 import CategoriesTab from '../components/Settings/CategoriesTab';
 import ProductsTab from '../components/Settings/ProductsTab';
 import RecommendationsTab from '../components/Settings/RecommendationsTab';
+import SeedDataModal from '../components/Settings/SeedDataModal';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('users');
+  const [showSeedModal, setShowSeedModal] = useState(false);
 
   const tabs = [
     { id: 'users', label: 'Users', icon: MdPeople },
@@ -19,9 +21,18 @@ const Settings = () => {
     <div className="min-h-screen bg-[#F8FAFB] p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-black text-[#3A707A] tracking-tighter uppercase">Settings</h1>
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Manage Users, Categories & Products</p>
+                <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-black text-[#3A707A] tracking-tighter uppercase">Settings</h1>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Manage Users, Categories & Products</p>
+          </div>
+          <button
+            onClick={() => setShowSeedModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-colors"
+          >
+            <MdCloudUpload size={18} />
+            Seed Menu Data
+          </button>
         </div>
 
         {/* Tabs */}
@@ -48,6 +59,9 @@ const Settings = () => {
         {activeTab === 'products' && <ProductsTab />}
         {activeTab === 'recommendations' && <RecommendationsTab />}
       </div>
+        {showSeedModal && (
+        <SeedDataModal onClose={() => setShowSeedModal(false)} />
+      )}
     </div>
   );
 };
