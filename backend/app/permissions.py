@@ -11,6 +11,7 @@ class Permission(str, Enum):
     VIEW_MENU = "view_menu"
     CREATE_MENU_ITEM = "create_menu_item"
     UPDATE_MENU_ITEM = "update_menu_item"
+    MANAGE_MENU = "manage_menu_item"
     DELETE_MENU_ITEM = "delete_menu_item"
     
     # Table permissions
@@ -65,6 +66,7 @@ ROLE_PERMISSIONS = {
         Permission.VIEW_MENU,
         Permission.CREATE_MENU_ITEM,
         Permission.UPDATE_MENU_ITEM,
+        Permission.MANAGE_MENU,
         Permission.DELETE_MENU_ITEM,
         Permission.VIEW_TABLES,
         Permission.CREATE_TABLE,

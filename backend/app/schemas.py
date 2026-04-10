@@ -280,5 +280,17 @@ class CheckoutRequest(BaseModel):
     customer_phone: Optional[str] = None
     notes: Optional[str] = None
 
+# Recommendation Schema
+class ProductRecommendationOut(BaseModel):
+    product_id: int
+    name: str
+    price: float
+    image_url: Optional[str] = None
+    recommendation_score: float
+    reason: str
+    
+    class Config:
+        from_attributes = True
+
 # Forward references
 OrderOut.model_rebuild()

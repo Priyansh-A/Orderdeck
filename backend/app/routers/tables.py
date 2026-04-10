@@ -284,3 +284,34 @@ async def reset_all_tables(
         "total_tables": len(tables),
         "reset_tables": reset_count
     }
+    
+@router.delete("/delete-all", status_code=status.HTTP_200_OK)
+async def delete_all_tables(
+    session: SessionDep,
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_TABLE]))
+):
+    """Delete all tables permanently (admin only)"""
+    
+    query = select(Table)
+    result = await session.exec(query)
+    tables = result.all()
+    
+    deleted_count = 0
+    for table in tables:
+        orders = await session.exec(select(Order).where(Order.table_id == table.id))
+        if orders.first():
+            continue 
+    
+    for table in tables:
+        orders = await session.exec(select(Order).where(Order.table_id == table.id))
+        if not orders.first():
+            await session.delete(table)
+            deleted_count += 1
+    
+    await session.commit()
+    
+    return {
+        "message": f"Successfully deleted {deleted_count} tables",
+        "deleted_count": deleted_count,
+        "total_tables": len(tables)
+    }

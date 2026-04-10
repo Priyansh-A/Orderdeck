@@ -29,7 +29,6 @@ const Signup = () => {
     setError('');
     setSuccess('');
 
-    // Validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -43,17 +42,15 @@ const Signup = () => {
     setIsLoading(true);
 
     try {
-      // Create user account
       await authService.signup({
         username: formData.username,
         email: formData.email,
         password: formData.password,
-        role: 'staff' // Default role for new signups
+        role: 'staff' // default role
       });
 
       setSuccess('Account created successfully! Logging you in...');
 
-      // Auto login after successful signup
       setTimeout(async () => {
         try {
           await login({
@@ -62,7 +59,6 @@ const Signup = () => {
           });
           navigate('/');
         } catch (loginErr) {
-          // If auto login fails, redirect to login page
           navigate('/login');
         }
       }, 1500);

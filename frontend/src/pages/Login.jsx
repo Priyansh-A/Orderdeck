@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom'; // Add Link here
+import { useNavigate, Link } from 'react-router-dom'; 
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -97,7 +97,7 @@ const Login = () => {
           </button>
         </form>
                 
-        {/* Signup link - now Link is imported */}
+        {/* Signup link */}
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}

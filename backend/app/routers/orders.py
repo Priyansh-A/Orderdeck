@@ -20,9 +20,8 @@ async def checkout(
     checkout_data: schemas.CheckoutRequest,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CHECKOUT]))
 ):
-    """Convert cart to order"""
+    """Make orders - dine-in requires occupied table, takeaway requires customer name"""
     
-    # Load eagerly
     cart_query = (
         select(Cart)
         .where(Cart.id == checkout_data.cart_id, Cart.user_id == current_user.id)
@@ -42,6 +41,7 @@ async def checkout(
     
     table = None
     party_id = None
+    customer_name = None
     
     if checkout_data.order_type == "dine_in":
         if not cart.table_id:
@@ -51,19 +51,29 @@ async def checkout(
         if not table:
             raise HTTPException(status_code=404, detail="Table not found")
         
-        if table.status == "occupied":
+        if table.status != "occupied":
             raise HTTPException(
                 status_code=400, 
-                detail=f"Table {table.table_number} is already occupied by {table.occupied_by_customer or 'another party'}"
+                detail="Table is not occupied. Please select a table with customer name first."
             )
         
-        party_id = f"PARTY-{table.id}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
-        table.status = "occupied"
-        table.occupied_by_party_id = party_id
-        table.occupied_by_customer = checkout_data.customer_name or cart.customer_name
-        table.occupied_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        session.add(table)
-    
+        party_id = table.occupied_by_party_id
+        if not party_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Table has no party assigned. Please select table with customer name first."
+            )
+        
+        customer_name = table.occupied_by_customer
+        
+    else: 
+        if not checkout_data.customer_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Customer name is required for takeaway orders"
+            )
+        customer_name = checkout_data.customer_name
+            
     order_number = f"ORD-{datetime.now().strftime('%Y%m%d%H%M%S%f')}-{current_user.id}"
     
     subtotal = 0
@@ -87,7 +97,7 @@ async def checkout(
             "notes": cart_item.notes
         })
     
-    total = subtotal 
+    total = subtotal
     
     new_order = Order(
         order_number=order_number,
@@ -95,7 +105,7 @@ async def checkout(
         table_id=cart.table_id if checkout_data.order_type == "dine_in" else None,
         party_id=party_id,
         user_id=current_user.id,
-        customer_name=checkout_data.customer_name or cart.customer_name,
+        customer_name=customer_name,
         customer_phone=checkout_data.customer_phone,
         subtotal=subtotal,
         total_amount=total,
@@ -119,7 +129,10 @@ async def checkout(
     for cart_item in cart.items:
         await session.delete(cart_item)
     
-    await session.delete(cart)
+    cart.items = []
+    cart.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    session.add(cart)
+    
     await session.commit()
     
     query = (

@@ -29,10 +29,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      await authService.login(credentials);
+      const data = await authService.login(credentials);
       const userData = await authService.getCurrentUser();
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
+      return data;
     } catch (error) {
       throw error;
     }
@@ -41,13 +42,15 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     authService.logout();
     setUser(null);
+    localStorage.removeItem('user');
   };
 
   const value = {
     user,
     isLoading,
     login,
-    logout
+    logout,
+    isAuthenticated: !!user,
   };
 
   return (

@@ -1,28 +1,29 @@
-import axiosInstance from '../config/api';
+import api from './api';
 
 class CategoryService {
   async getAllCategories() {
-    const response = await axiosInstance.get('/categories/');
+    const response = await api.get('/categories/');
     return response.data;
   }
 
   async getCategoryById(id) {
-    const response = await axiosInstance.get(`/categories/${id}`);
+    const response = await api.get(`/categories/${id}`);
     return response.data;
   }
 
-  async createCategory(name) {
-    const response = await axiosInstance.post('/categories/', { name });
+  async createCategory(categoryData) {
+    const response = await api.post('/categories/', categoryData);
     return response.data;
   }
 
-  async updateCategory(id, name) {
-    const response = await axiosInstance.patch(`/categories/${id}`, { name });
+  async updateCategory(id, categoryData) {
+    const response = await api.patch(`/categories/${id}`, categoryData);
     return response.data;
   }
 
   async deleteCategory(id) {
-    await axiosInstance.delete(`/categories/${id}`);
+    const response = await api.delete(`/categories/${id}`);
+    return response.status === 204;
   }
 }
 

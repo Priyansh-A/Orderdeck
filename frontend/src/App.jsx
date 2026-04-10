@@ -1,17 +1,29 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
+import Layout from './components/Layout/Layout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Home from './pages/Home';
+import Menu from './pages/Menu';
+import Orders from './pages/Orders';
+import Tables from './pages/Tables';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFailure from './pages/PaymentFailure';
+import Payments from './pages/Payments';
+import Analytics from './pages/Analytics';
+import Settings from './pages/Settings';
+import { SearchProvider } from './context/SearchContext';
+import OrderDetails from './pages/OrderDetails';
 
-const ProtectedRoute = ({ children }) => {
+const PrivateRoute = ({ children }) => {
   const { user, isLoading } = useAuth();
   
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full size-12 border-4 border-primary-500 border-t-transparent"></div>
       </div>
     );
   }
@@ -19,42 +31,70 @@ const ProtectedRoute = ({ children }) => {
   return user ? children : <Navigate to="/login" />;
 };
 
-// Redirect to home if already logged in
-const AuthRedirect = ({ children }) => {
-  const { user, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-  
-  return !user ? children : <Navigate to="/" />;
-};
-
-const AppRoutes = () => {
+const AppContent = () => {
   return (
     <Routes>
-      <Route path="/login" element={
-        <AuthRedirect>
-          <Login />
-        </AuthRedirect>
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/" element={
+        <PrivateRoute>
+          <Layout>
+            <Menu />
+          </Layout>
+        </PrivateRoute>
       } />
-      <Route path="/signup" element={
-        <AuthRedirect>
-          <Signup />
-        </AuthRedirect>
+      <Route path="/orders" element={
+        <PrivateRoute>
+          <Layout>
+            <Orders />
+          </Layout>
+        </PrivateRoute>
       } />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/tables" element={
+        <PrivateRoute>
+          <Layout>
+            <Tables />
+          </Layout>
+        </PrivateRoute>
+      } />
+    <Route path="/payment/success" element={
+      <PrivateRoute>
+      <PaymentSuccess />
+      </PrivateRoute>      
+  } />
+    <Route path="/payment/failure" element={
+      <PrivateRoute>
+      <PaymentFailure />
+      </PrivateRoute>      
+      } />
+      <Route path="/payments" element={
+  <PrivateRoute>
+    <Layout>
+      <Payments />
+    </Layout>
+  </PrivateRoute>
+  } />
+  <Route path="/analytics" element={
+  <PrivateRoute>
+    <Layout>
+      <Analytics />
+    </Layout>
+  </PrivateRoute>
+  } />
+  <Route path="/settings" element={
+  <PrivateRoute>
+    <Layout>
+      <Settings />
+    </Layout>
+  </PrivateRoute>
+  } />
+  <Route path="/orders/:id" element={
+  <PrivateRoute>
+    <Layout>
+      <OrderDetails />
+    </Layout>
+  </PrivateRoute>
+  } />
     </Routes>
   );
 };
@@ -63,7 +103,33 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+          <SearchProvider>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 1000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 1000,
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 1000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+        <AppContent />
+        </SearchProvider>
       </AuthProvider>
     </BrowserRouter>
   );

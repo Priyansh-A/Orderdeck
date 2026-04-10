@@ -1,13 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap');
+
 @import "tailwindcss";
 
+
 @theme {
-  --color-primary: #3b82f6;
-  --color-primary-dark: #2563eb;
-  --color-secondary: #10b981;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
+  /* Primary Colors */
+  --color-primary-50: #e6f3f5;
+  --color-primary-100: #b3dbdf;
+  --color-primary-200: #80c3c9;
+  --color-primary-300: #4dabb3;
+  --color-primary-400: #3f99ac;
+  --color-primary-500: #2E636E;  
+  
+  /* buttons */
+  --color-primary-600: #255059;
+  --color-primary-700: #1c3d44;
+  --color-primary-800: #132a2f;
+  --color-primary-900: #09171a;
+  
+  /* Text Colors */
+  --color-text-black: #1E1616;
+  --color-text-grey: #555555;
+  --color-text-blue: #2E636E;
+
+  
+  /* Border Colors */
+  --color-menu-card-border: #AFAFAF;
+  --color-cart-card-border: #E6E6E6;
+  
+  /* Status Colors */
+  --color-red: #E41E26;
+  --color-green: #008000;
+  --color-yellow: #FEC342;
+  --color-cooking: #DCAD7B;
+  --color-served: #298AD6;
+  
+  --color-light-gray-bg: #F2F3F7;
+  
+  --color-button-pressed: #3F99AC;
+  
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-quicksand: 'Quicksand', system-ui, -apple-system, sans-serif;
+  
+  --animate-fade-in: fade-in 0.3s ease-in-out;
+  
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
 }
 
-body {
-  @apply bg-gray-50;
+@layer base {
+  body {
+    @apply bg-light-gray-bg font-sans;
+    color: #1E1616; 
+  }
+  
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full hover:bg-gray-400;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: #2E636E;
+  }
+  
+  .btn-primary:hover {
+    background-color: #3F99AC;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-all duration-200;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden;
+  }
+  
+  .menu-card {
+    @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden;
+    border: 1px solid #AFAFAF;
+  }
+  
+  .cart-card {
+    @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden;
+    border: 1px solid #E6E6E6;
+  }
+  
+  .input {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all;
+  }
+  
+  .badge-pending {
+    @apply bg-yellow text-gray-800;
+    background-color: #FEC342;
+  }
+  
+  .badge-preparing {
+    background-color: #DCAD7B;
+    @apply text-white;
+  }
+  
+  .badge-cooking {
+    background-color: #DCAD7B;
+    @apply text-white;
+  }
+  
+  .badge-ready {
+    background-color: #008000;
+    @apply text-white;
+  }
+  
+  .badge-served {
+    background-color: rgba(41, 138, 214, 0.2);
+    color: #298AD6;
+  }
+  
+  .badge-completed {
+    background-color: #008000;
+    @apply text-white;
+  }
+  
+  .badge-cancelled {
+    background-color: #E41E26;
+    @apply text-white;
+  }
+  
+  .text-black-custom {
+    color: #1E1616;
+  }
+  
+  .text-grey-custom {
+    color: #555555;
+  }
+  
+  .btn-pressed {
+    background-color: #3F99AC;
+  }
+}
+
+@layer utilities {
+  .font-quicksand {
+    font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  
+  .letter-spacing-wide {
+    letter-spacing: 0.145em;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

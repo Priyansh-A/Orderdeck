@@ -64,7 +64,7 @@ class TestRestaurantAPI:
     
     async def test_server_health(self):
         """Test if server is running"""
-        logger.info("\n🔍 Testing server health...")
+        logger.info("\n Testing server health...")
         response = await self.make_request("GET", "/")
         if response and response.status_code == 200:
             logger.info("Server is running")
@@ -201,13 +201,11 @@ class TestRestaurantAPI:
         logger.info("Starting Restaurant API Tests")
         logger.info("="*50)
         
-        # First check if server is running
         if not await self.test_server_health():
             logger.error("Server is not available. Make sure it's running on http://localhost:8000")
             logger.error("Run: uvicorn app.main:app --reload")
             return
         
-        # Try to login first (users might already exist)
         logger.info("\n" + "="*50)
         logger.info("Attempting to login...")
         logger.info("="*50)
@@ -215,7 +213,6 @@ class TestRestaurantAPI:
         await self.login_user("manager")
         await self.login_user("staff")
         
-        # If login failed, try to create users
         if "manager" not in self.tokens:
             logger.info("\n" + "="*50)
             logger.info("Creating users...")
@@ -223,20 +220,16 @@ class TestRestaurantAPI:
             await self.create_test_user("manager")
             await self.create_test_user("staff")
             
-            # Try login again
             await self.login_user("manager")
             await self.login_user("staff")
         
-        # Test authenticated endpoints
         if "manager" in self.tokens:
             logger.info("\n" + "="*50)
             logger.info("Testing with Manager token")
             logger.info("="*50)
             
-            # Test /users/me
             await self.test_protected_endpoint("manager")
             
-            # Test categories
             await self.get_categories("manager")
             await self.create_category("manager")
             await self.get_categories("manager")
@@ -246,10 +239,8 @@ class TestRestaurantAPI:
             logger.info("Testing with Staff token")
             logger.info("="*50)
             
-            # Test /users/me
             await self.test_protected_endpoint("staff")
             
-            # Test categories
             await self.get_categories("staff")
         
         logger.info("\n" + "="*50)

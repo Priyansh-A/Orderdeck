@@ -1,4 +1,4 @@
-import axiosInstance from '../config/api';
+import api from './api';
 
 class AuthService {
   async login(credentials) {
@@ -6,10 +6,8 @@ class AuthService {
     formData.append('username', credentials.username);
     formData.append('password', credentials.password);
 
-    const response = await axiosInstance.post('/auth/login', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    const response = await api.post('/auth/login', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     
     if (response.data.access_token) {
@@ -19,15 +17,29 @@ class AuthService {
     return response.data;
   }
 
-  // Add signup method
   async signup(userData) {
-    const response = await axiosInstance.post('/users/', userData);
+    const response = await api.post('/users/', userData);
     return response.data;
   }
 
   async getCurrentUser() {
-    const response = await axiosInstance.get('/auth/me');
+    const response = await api.get('/auth/me');
     return response.data;
+  }
+
+  async getAllUsers() {
+  const response = await api.get('/users/');
+  return response.data;
+  }
+
+  async updateUser(id, userData) {
+  const response = await api.put(`/users/${id}`, userData);
+  return response.data;
+  }
+
+  async deleteUser(id) {
+  const response = await api.delete(`/users/${id}`);
+  return response.data;
   }
 
   logout() {
@@ -42,6 +54,9 @@ class AuthService {
   isAuthenticated() {
     return !!this.getToken();
   }
+
+
 }
+
 
 export default new AuthService();

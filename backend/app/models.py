@@ -237,6 +237,7 @@ class Order(SQLModel, table=True):
     party_id: Optional[str] = Field(default=None, index=True)
     user_id: int = Field(foreign_key="users.id")
     customer_name: Optional[str] = Field(default=None, max_length=100)
+    transaction_id: Optional[str] = Field(default=None, index=True)
     customer_phone: Optional[str] = Field(default=None, max_length=20)
     subtotal: float = Field(default=0.0)
     total_amount: float = Field(default=0.0)
