@@ -224,27 +224,28 @@ orderdeck/
    git clone https://github.com/Priyansh-A/orderdeck.git
     cd orderdeck
 ```
+2. **Create and add an sha256 SECRET_KEY in backend .env file**
 
-2. **Build the images**
+3. **Build the images**
   ```bash
     docker-compose build
 ```    
-3. **Run the container**
+4. **Run the container**
  ```bash
    docker-compose up
    ```
-4. **Application urls**
+5. **Application urls**
    - Frontend: http://localhost:5173
    - Backend: http://localhost:8000
    - api endpoints (Swagger UI) : http://localhost:8000/docs
 
-5. **Sign in to the website**
+6. **Sign in to the website**
    - Frontend: http://localhost:5173/login
-6. **Seed menu data in the website**
+7. **Seed menu data in the website**
    
    ![alt text](</screenshots/Screenshot 2026-04-10 223114.png>)
 
-7. **After some successful orders train the recommendation system to give product recommendations based on purchase history**
+8. **After some successful orders train the recommendation system to give product recommendations based on purchase history**
 
    ![alt text](</screenshots/Screenshot 2026-04-10 232911.png>)
    
