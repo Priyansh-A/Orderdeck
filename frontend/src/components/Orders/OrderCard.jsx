@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   MdAccessTime, MdTableBar, MdCheckCircle, MdRestaurant, 
   MdDirectionsBike, MdFastfood, MdDeleteOutline, MdLocalDining 
 } from 'react-icons/md';
 import useOrderStore from '../../store/orderStore';
 import toast from 'react-hot-toast';
+import { notifyOrderStatusUpdated, notifyError } from '../../utils/notificationHelper';
 
 const OrderCard = ({ order, onStatusUpdate }) => {
+  const navigate = useNavigate();
   const { updateStatus, cancelOrder } = useOrderStore();
   const [updating, setUpdating] = useState(false);
   const [localStatus, setLocalStatus] = useState(order.status);
@@ -46,7 +49,7 @@ const OrderCard = ({ order, onStatusUpdate }) => {
   const handleCancel = async () => {
     if (!window.confirm("Cancel this order?")) return;
     setUpdating(true);
-        setLocalStatus('cancelled');
+    setLocalStatus('cancelled');
     try {
       await cancelOrder(order.id);
       notifyOrderStatusUpdated(order.order_number, 'cancelled');
@@ -60,6 +63,10 @@ const OrderCard = ({ order, onStatusUpdate }) => {
       setUpdating(false); 
     }
   };
+
+  const handleSeeMore = () => {
+    navigate(`/orders/${order.id}`);
+  };  
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -113,7 +120,14 @@ const OrderCard = ({ order, onStatusUpdate }) => {
               <span className="shrink-0 text-text-black font-medium">रु {(item.subtotal || (item.price * item.quantity)).toLocaleString()}</span>
             </div>
           ))}
-          {itemCount > 2 && <button className="text-[#3A707A] text-[11px] font-bold mt-1 underline">See More {'>'}</button>}
+          {itemCount > 2 && (
+            <button 
+              onClick={handleSeeMore} 
+              className="text-[#3A707A] text-[11px] font-bold mt-1 underline"
+            >
+              See More {'>'}
+            </button>
+          )}
         </div>
       </div>
 

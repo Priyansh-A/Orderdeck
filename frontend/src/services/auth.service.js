@@ -45,16 +45,34 @@ class AuthService {
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.clear();
+    localStorage.removeItem('cart-storage');
+    localStorage.removeItem('notifications-storage');
   }
 
   getToken() {
-    return localStorage.getItem('token');
+    const token = localStorage.getItem('token');
+    if (token && !this.isTokenExpired(token)) {
+      return token;
+    }
+    if (token) {
+      this.logout();
+    }
+    return null;
+  }
+
+  isTokenExpired(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
   }
 
   isAuthenticated() {
     return !!this.getToken();
   }
-
 
 }
 

@@ -4,7 +4,6 @@ from sqlmodel import select
 from sqlalchemy.orm import selectinload
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
-from ..config import settings
 import hmac
 import hashlib
 import base64
@@ -23,12 +22,11 @@ router = APIRouter(
 )
 
 # eSewa Configuration
-ESEWA_MERCHANT_CODE = settings.ESEWA_MERCHANT_CODE
-ESEWA_SECRET_KEY = settings.ESEWA_SECRET_KEY
-ESEWA_BASE_URL = settings.ESEWA_BASE_URL
-ESEWA_SUCCESS_URL = settings.ESEWA_SUCCESS_URL
-ESEWA_FAILURE_URL = settings.ESEWA_FAILURE_URL
-
+ESEWA_MERCHANT_CODE = "EPAYTEST"
+ESEWA_SECRET_KEY = "8gBm/:&EnhH.1/q"
+ESEWA_BASE_URL = "https://rc-epay.esewa.com.np/api/epay/main/v2/form"
+ESEWA_SUCCESS_URL = "http://localhost:8000/payments/esewa/success"
+ESEWA_FAILURE_URL = "http://localhost:8000/payments/esewa/failure"
 
 @router.get("/")
 async def get_all_payments(

@@ -40,9 +40,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    authService.logout();
-    setUser(null);
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.clear();
+    
+    localStorage.removeItem('cart-storage');
+    localStorage.removeItem('notifications-storage');
+    
+    setUser(null);
+    
+    window.location.href = '/login';
   };
 
   const value = {

@@ -4,6 +4,9 @@ from .database import engine
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .routers import category, product, user, user_auth, tables, orders, cart, recommendations, payments
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
 import os
 from pathlib import Path
@@ -24,7 +27,29 @@ async def lifespan(app: FastAPI):
     print("Database connections closed")
 
 
+class CSPMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 https://rc-epay.esewa.com.np; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https: http:; "
+            "font-src 'self' data:; "
+            "frame-src https://rc-epay.esewa.com.np; " 
+            "connect-src 'self' http://localhost:8000 http://localhost:5173 https://rc-epay.esewa.com.np https://esewa.com.np;"
+        )
+        return response
+
 app = FastAPI(lifespan=lifespan)
+
+# CSP middleware
+app.add_middleware(CSPMiddleware)
+
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["localhost", "127.0.0.1"]
+)
 
 # CORS
 app.add_middleware(

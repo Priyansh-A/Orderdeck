@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { MdPeople, MdCategory, MdRestaurantMenu } from 'react-icons/md';
+import { MdPeople, MdRecommend, MdCategory, MdRestaurantMenu } from 'react-icons/md';
 import UsersTab from '../components/Settings/UsersTab';
 import CategoriesTab from '../components/Settings/CategoriesTab';
 import ProductsTab from '../components/Settings/ProductsTab';
+import RecommendationsTab from '../components/Settings/RecommendationsTab';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -11,6 +12,7 @@ const Settings = () => {
     { id: 'users', label: 'Users', icon: MdPeople },
     { id: 'categories', label: 'Categories', icon: MdCategory },
     { id: 'products', label: 'Products', icon: MdRestaurantMenu },
+    { id: 'recommendations', label: 'Recommendations', icon: MdRecommend },
   ];
 
   return (
@@ -44,6 +46,7 @@ const Settings = () => {
         {activeTab === 'users' && <UsersTab />}
         {activeTab === 'categories' && <CategoriesTab />}
         {activeTab === 'products' && <ProductsTab />}
+        {activeTab === 'recommendations' && <RecommendationsTab />}
       </div>
     </div>
   );

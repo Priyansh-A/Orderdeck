@@ -15,9 +15,8 @@ router = APIRouter(
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
 async def create_user(
     user: schemas.UserCreate,
-    session: SessionDep,
-    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.MANAGE_STAFF]))
-):
+    session: SessionDep
+    ):
     """Add a user"""
     query = select(User).where(
         (User.username == user.username) | 
