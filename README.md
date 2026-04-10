@@ -244,6 +244,10 @@ orderdeck/
    
    ![alt text](</screenshots/Screenshot 2026-04-10 223114.png>)
 
+7. **After some successful orders train the recommendation system to give product recommendations based on purchase history**
+
+   ![alt text](</screenshots/Screenshot 2026-04-10 232911.png>)
+   
 ### All routes in the backend (localhost:8000) 
    ![alt text](</screenshots/Screenshot 2026-04-10 212654.png>)
    ![alt text](</screenshots/Screenshot 2026-04-10 212713.png>)
@@ -259,6 +263,7 @@ orderdeck/
    ![alt text](</screenshots/Screenshot 2026-04-10 174551.png>)
    ![alt text](</screenshots/Screenshot 2026-04-10 174603.png>)
    ![alt text](</screenshots/Screenshot 2026-04-10 174641.png>)
+   ![alt text](</screenshots/Screenshot 2026-04-10 232854.png>)
    ![alt text](</screenshots/Screenshot 2026-04-10 174654.png>)
    ![alt text](</screenshots/Screenshot 2026-04-10 174708.png>)
    ![alt text](</screenshots/Screenshot 2026-04-10 174654.png>)
@@ -276,7 +281,7 @@ orderdeck/
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
 
 Copyright © 2026 Prem Raj Awasthi & Prabhav Sthapit
 
