@@ -86,13 +86,6 @@ ROLE_PERMISSIONS = {
         Permission.VIEW_STAFF,
         Permission.VIEW_PAYMENTS,
         Permission.PROCESS_PAYMENT,
-    ],
-    UserRole.KITCHEN: [
-        Permission.VIEW_MENU,
-        Permission.VIEW_ORDERS,
-        Permission.VIEW_KITCHEN,
-        Permission.UPDATE_KITCHEN_STATUS,
-        Permission.VIEW_INVENTORY,
     ]
 }
 
