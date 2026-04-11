@@ -15,12 +15,32 @@ const TableCard = ({ table, onUpdate }) => {
 
   const isOccupied = localStatus === 'occupied';
   const isSelected = selectedTable === table.id;
-  const borderColor = isOccupied ? 'border-[#F28C28]' : 'border-[#58D39E]';
 
   const formatTime = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleSelectTable = () => {
+    // Only allow selection if table is occupied
+    if (!isOccupied) {
+      toast.error('Please check-in to a table first');
+      return;
+    }
+    
+    if (isSelected) {
+      // Unselect the table
+      clearTableAndCustomer();
+      toast.success(`Table ${table.table_number} unselected`);
+    } else {
+      // Select the table
+      setTable(table.id);
+      if (localCustomer) {
+        setCustomerName(localCustomer);
+      }
+      toast.success(`Table ${table.table_number} selected`);
+    }
   };
 
   const handleConfirmSelect = async () => {
@@ -104,9 +124,10 @@ const TableCard = ({ table, onUpdate }) => {
   return (
     <div className="relative group w-full">
       <div 
-        onClick={() => !isOccupied && setShowSelectModal(true)}
+        onClick={handleSelectTable}
         className={`w-full aspect-square sm:aspect-auto sm:min-h-35 flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border-[3px] transition-all cursor-pointer bg-white
-          ${borderColor} ${isSelected ? 'ring-4 ring-orange-100 shadow-md scale-[1.02]' : 'hover:shadow-md'}
+          ${isOccupied ? 'border-[#F28C28]' : 'border-[#58D39E]'} 
+        ${isSelected && isOccupied ? 'ring-4 ring-emerald-300 shadow-md scale-[1.02]' : !isOccupied ? 'cursor-pointer' : 'hover:shadow-md'}
           ${updating ? 'opacity-70 pointer-events-none' : ''}
         `}
       >
@@ -141,6 +162,19 @@ const TableCard = ({ table, onUpdate }) => {
           )}
         </div>
 
+        {!isOccupied && (
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSelectModal(true);
+            }}
+            disabled={updating}
+            className="sm:absolute sm:bottom-2 sm:left-2 mt-2 w-full sm:w-auto text-[9px] bg-gray-100 hover:bg-orange-50 hover:text-[#F28C28] text-gray-500 px-2 py-1 rounded uppercase font-bold transition-colors shadow-sm disabled:opacity-50"
+          >
+            Check-in
+          </button>
+        )}
+        
         {isOccupied && (
           <button 
             onClick={handleClearTable}
