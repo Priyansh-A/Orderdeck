@@ -155,7 +155,7 @@ async def initiate_esewa_payment(
     
     data_to_sign = f"total_amount={total_amount},transaction_uuid={transaction_uuid},product_code={product_code}"
     
-    secret = ESEWA_SECRET_KEY.encode()
+    secret = bytes(ESEWA_SECRET_KEY, 'utf-8')
     
     hmac_sha256 = hmac.new(secret, data_to_sign.encode('utf-8'), hashlib.sha256)
     signature = base64.b64encode(hmac_sha256.digest()).decode('utf-8')
