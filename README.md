@@ -224,7 +224,15 @@ orderdeck/
    git clone https://github.com/Priyansh-A/orderdeck.git
     cd orderdeck
 ```
-2. **Create and add an sha256 SECRET_KEY in backend .env file**
+2. **Create a .env file in the backend directory and add**
+   ```bash
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=postgres
+   POSTGRES_HOST=db
+   POSTGRES_PORT=5432
+   SECRET_KEY=(your unique key in sha256 hash)
+   ```
 
 3. **Build the images**
   ```bash
