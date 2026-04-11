@@ -199,9 +199,10 @@ const useCartStore = create(
         set({ customerName: name });
       },
       
-      clearTableAndCustomer: () => {
-        set({ selectedTable: null, customerName: null });
-      },
+      clearTableAndCustomer: () => set({ 
+        selectedTable: null, 
+        customerName: '', 
+        items: [] }),
     }),
     {
       name: 'cart-storage',
