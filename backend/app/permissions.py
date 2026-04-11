@@ -73,6 +73,7 @@ ROLE_PERMISSIONS = {
         Permission.UPDATE_TABLE,
         Permission.DELETE_TABLE,
         Permission.UPDATE_TABLE_STATUS,
+        Permission.MANAGE_TABLES,
         Permission.VIEW_ORDERS,
         Permission.CREATE_ORDER,
         Permission.UPDATE_ORDER_STATUS,
