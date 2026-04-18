@@ -8,6 +8,7 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
+from .scripts.seed_manager import seed_initial_manager
 import os
 from pathlib import Path
 from . import models
@@ -21,6 +22,8 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(models.SQLModel.metadata.create_all)
     print("Database tables created")
+    await seed_initial_manager()
+    print("Manager seeding completed")
     yield
     # shutdown
     await engine.dispose()

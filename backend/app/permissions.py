@@ -4,7 +4,6 @@ from typing import List
 class UserRole(str, Enum):
     MANAGER = "manager"
     STAFF = "staff"
-    KITCHEN = "kitchen"
 
 class Permission(str, Enum):
     # Menu permissions

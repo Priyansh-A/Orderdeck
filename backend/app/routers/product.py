@@ -1,17 +1,47 @@
 from .. import schemas, auth
 from ..permissions import *
 from ..models import Category, Product
-from fastapi import Response, status, HTTPException, APIRouter, Depends, Request
+from fastapi import Response, status, HTTPException, APIRouter, Depends, Request, UploadFile, File, Form
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from ..database import SessionDep
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
+import shutil
+import os
+from pathlib import Path
+import uuid
 
 router = APIRouter(
     prefix="/products",
     tags=['Products']
 )
+
+UPLOAD_DIR = Path(__file__).parent.parent / "assets" / "products"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+def save_uploaded_file(uploaded_file: UploadFile, keep_original_name: bool = False) -> str:
+    """Save uploaded file"""
+    if keep_original_name:
+        filename = uploaded_file.filename
+        filename = os.path.basename(filename)
+    else:
+        file_extension = Path(uploaded_file.filename).suffix
+        filename = f"{uuid.uuid4().hex}{file_extension}"
+    
+    file_path = UPLOAD_DIR / filename
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(uploaded_file.file, buffer)
+    
+    return filename
+
+def delete_old_image(filename: str):
+    """Delete old image file if it exists"""
+    if filename and '/' not in filename:
+        old_image_path = UPLOAD_DIR / filename
+        if old_image_path.exists():
+            old_image_path.unlink()
+
 
 @router.get("/", response_model=List[schemas.ProductOut], status_code=status.HTTP_200_OK)
 async def get_products(
@@ -76,12 +106,20 @@ async def get_product(
 @router.post("/", response_model=schemas.ProductOut, status_code=status.HTTP_201_CREATED)
 async def create_product(
     request: Request,
-    session: SessionDep, 
-    product: schemas.ProductCreate,
-    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_MENU_ITEM]))
+    session: SessionDep,
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.CREATE_MENU_ITEM])),
+    name: str = Form(...),
+    price: float = Form(...),
+    category_id: int = Form(...),
+    description: Optional[str] = Form(None),
+    is_available: bool = Form(True),
+    image_url: Optional[str] = Form(None), 
+    image: Optional[UploadFile] = File(None),
+    keep_original_name: bool = Form(False) 
 ):
-    """Add a product"""
-    query = select(Product).where(Product.name == product.name)
+    """Add a product with optional image upload"""
+    
+    query = select(Product).where(Product.name == name)
     result = await session.exec(query)
     existing = result.first()
     
@@ -90,22 +128,47 @@ async def create_product(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Product with this name already exists"
         )
-        
-    category = await session.get(Category, product.category_id)
+    
+    category = await session.get(Category, category_id)
     if not category:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Category with id {product.category_id} does not exist"
+            detail=f"Category with id {category_id} does not exist"
         )
+    
+    final_image_url = image_url
+    if image:
+        allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+        if image.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file type. Only JPEG, JPG, PNG, GIF, and WEBP are allowed."
+            )
         
+        file_size = 0
+        chunk_size = 1024
+        while chunk := await image.read(chunk_size):
+            file_size += len(chunk)
+            if file_size > 5 * 1024 * 1024: 
+                raise HTTPException(
+                    status_code=400,
+                    detail="File too large. Maximum size is 5MB."
+                )
+        await image.seek(0) 
+        
+        final_image_url = save_uploaded_file(image, keep_original_name=keep_original_name)
+    elif image_url:
+        final_image_url = image_url
+    
     new_product = Product(
-        name=product.name,
-        description=product.description,
-        price=product.price,
-        category_id=product.category_id,
-        image_url=product.image_url,
-        is_available=product.is_available
+        name=name,
+        description=description,
+        price=price,
+        category_id=category_id,
+        image_url=final_image_url,
+        is_available=is_available
     )
+    
     session.add(new_product)
     await session.commit()
     await session.refresh(new_product)
@@ -118,26 +181,68 @@ async def create_product(
 async def update_product(
     id: int,
     request: Request,
-    session: SessionDep, 
-    product: schemas.ProductUpdate,
-    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_MENU_ITEM]))
+    session: SessionDep,
+    current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.UPDATE_MENU_ITEM])),
+    name: Optional[str] = Form(None),
+    price: Optional[float] = Form(None),
+    category_id: Optional[int] = Form(None),
+    description: Optional[str] = Form(None),
+    is_available: Optional[bool] = Form(None),
+    image_url: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    keep_original_name: bool = Form(False)
 ):
-    """Update product info"""
+    """Update product"""
+    
     db_product = await session.get(Product, id)
     if db_product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Couldn't find a product with id: {id}")
     
-    if product.category_id and product.category_id != db_product.category_id:
-        category = await session.get(Category, product.category_id)
+    if category_id and category_id != db_product.category_id:
+        category = await session.get(Category, category_id)
         if not category:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Category with id {product.category_id} does not exist"
+                detail=f"Category with id {category_id} does not exist"
             )
+        db_product.category_id = category_id
     
-    update_data = product.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_product, field, value)
+    if image:
+        allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+        if image.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file type. Only JPEG, JPG, PNG, GIF, and WEBP are allowed."
+            )
+        
+        file_size = 0
+        chunk_size = 1024
+        while chunk := await image.read(chunk_size):
+            file_size += len(chunk)
+            if file_size > 5 * 1024 * 1024: 
+                raise HTTPException(
+                    status_code=400,
+                    detail="File too large. Maximum size is 5MB."
+                )
+        await image.seek(0)
+        
+        if db_product.image_url:
+            delete_old_image(db_product.image_url)
+        
+        db_product.image_url = save_uploaded_file(image, keep_original_name=keep_original_name)
+    elif image_url is not None:
+        if db_product.image_url and not image_url:
+            delete_old_image(db_product.image_url)
+        db_product.image_url = image_url
+    
+    if name is not None:
+        db_product.name = name
+    if price is not None:
+        db_product.price = price
+    if description is not None:
+        db_product.description = description
+    if is_available is not None:
+        db_product.is_available = is_available
     
     db_product.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(db_product)
@@ -154,13 +259,17 @@ async def delete_product(
     session: SessionDep,
     current_user: schemas.UserInDb = Depends(auth.require_permissions([Permission.DELETE_MENU_ITEM]))
 ):
-    """Remove a product"""
+    """Remove a product and its associated image"""
     db_product = await session.get(Product, id)
     if db_product is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=f"Couldn't find a product with id: {id}"
         )
+    
+    if db_product.image_url:
+        delete_old_image(db_product.image_url)
+    
     await session.delete(db_product)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

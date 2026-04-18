@@ -4,7 +4,6 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout/Layout';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import Menu from './pages/Menu';
 import Orders from './pages/Orders';
 import Tables from './pages/Tables';
@@ -34,7 +33,6 @@ const AppContent = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
       <Route path="/" element={
         <PrivateRoute>
           <Layout>

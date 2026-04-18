@@ -6,7 +6,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "postgres"
     POSTGRES_HOST: str = "db"
     POSTGRES_PORT: int = 5432
-    
+    USERNAME: str
+    PASSWORD: str
+    EMAIL: str
     SECRET_KEY: str 
     
     model_config = SettingsConfigDict(

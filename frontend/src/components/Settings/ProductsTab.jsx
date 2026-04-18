@@ -81,7 +81,7 @@ const ProductsTab = () => {
                 <th className="py-4 px-6 text-left">Price</th>
                 <th className="py-4 px-6 text-left">Status</th>
                 <th className="py-4 px-6 text-center">Actions</th>
-               </tr>
+              </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {products.map((product) => {
