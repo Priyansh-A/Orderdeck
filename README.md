@@ -232,6 +232,9 @@ orderdeck/
    POSTGRES_HOST=db
    POSTGRES_PORT=5432
    SECRET_KEY=(your unique key in sha256 hash)
+   USERNAME=
+   EMAIL=
+   PASSWORD=
    ```
 
 3. **Build the images**
@@ -247,7 +250,7 @@ orderdeck/
    - Backend: http://localhost:8000
    - api endpoints (Swagger UI) : http://localhost:8000/docs
 
-6. **Sign in to the website**
+6. **Login to the website**
    - Frontend: http://localhost:5173/login
 7. **Seed menu data in the website**
    
